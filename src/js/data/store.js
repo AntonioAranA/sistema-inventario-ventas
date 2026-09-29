@@ -52,6 +52,11 @@ export async function saveUser(payload) {
   return request("/api/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
 }
 
+export async function restoreBackup(payload) {
+  await request("/api/backup/restore", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+  await initializeStore();
+}
+
 async function request(url, options) {
   try {
     return await apiRequest(url, options);

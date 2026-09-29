@@ -1,5 +1,5 @@
 import { VALID_VIEWS, VIEW_TITLES } from "./config.js";
-import { deleteProduct, deleteSupplier, getState, getUsers, initializeStore, registerMovement, registerPurchase, registerSale, saveProduct, saveSupplier, saveUser } from "./data/store.js";
+import { deleteProduct, deleteSupplier, getState, getUsers, initializeStore, registerMovement, registerPurchase, registerSale, restoreBackup, saveProduct, saveSupplier, saveUser } from "./data/store.js";
 import { escapeHtml, formatDate, money } from "./utils/formatters.js";
 import { changePassword, getCurrentUser, initializeAuth, logout } from "./auth.js";
 import { showToast } from "./ui/notifications.js";
@@ -39,11 +39,14 @@ function csvRows(rows) {
 function exportSales() {
   const period = element("#report-period").value;
   const limit = period === "all" ? null : new Date(Date.now() - Number(period) * 86400000);
-  const rows = [["Folio", "Fecha", "Cliente", "Producto", "SKU", "Cantidad", "Precio unitario", "Subtotal"]];
   const state = getState();
+  const costs = new Map();
+  (state.purchases || []).flatMap((purchase) => purchase.items.map((item) => ({ ...item, date: purchase.date }))).sort((a, b) => new Date(b.date) - new Date(a.date)).forEach((item) => { if (!costs.has(item.productId)) costs.set(item.productId, item.unitCost); });
+  const rows = [["Folio", "Fecha", "Cliente", "Producto", "SKU", "Cantidad", "Precio unitario", "Costo unitario", "Subtotal", "Ganancia estimada"]];
   [...state.sales].filter((sale) => !limit || new Date(sale.date) >= limit).sort((a, b) => new Date(a.date) - new Date(b.date)).forEach((sale) => sale.items.forEach((item) => {
     const product = state.products.find(({ id }) => id === item.id || id === item.productId);
-    rows.push([sale.folio, formatDate(sale.date, true), sale.customer || "Venta mostrador", item.name, product?.sku || "", item.quantity, item.price, item.price * item.quantity]);
+    const cost = costs.get(item.id) || 0;
+    rows.push([sale.folio, formatDate(sale.date, true), sale.customer || "Venta mostrador", item.name, product?.sku || "", item.quantity, item.price, cost, item.price * item.quantity, (item.price - cost) * item.quantity]);
   }));
   downloadFile(`ventas-${new Date().toISOString().slice(0, 10)}.csv`, csvRows(rows));
   showToast("Reporte de ventas descargado");
@@ -59,6 +62,21 @@ function exportInventory() {
 function exportBackup() {
   downloadFile(`respaldo-inventario-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify({ exportedAt: new Date().toISOString(), ...getState() }, null, 2), "application/json;charset=utf-8");
   showToast("Respaldo descargado");
+}
+
+async function importBackup(event) {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file) return;
+  if (file.size > 20_000_000) return showToast("El respaldo supera el límite de 20 MB");
+  if (!confirm("Restaurar este respaldo reemplazará productos, ventas, compras y movimientos actuales. ¿Continuar?")) return;
+  try {
+    const backup = JSON.parse(await file.text());
+    await restoreBackup(backup);
+    cart = [];
+    refresh();
+    showToast("Respaldo restaurado correctamente");
+  } catch (error) { showToast(error.message || "El archivo no es un respaldo válido"); }
 }
 
 function navigate(view) {
@@ -407,6 +425,8 @@ function bindEvents() {
   element("#export-sales").addEventListener("click", exportSales);
   element("#export-inventory").addEventListener("click", exportInventory);
   element("#export-all").addEventListener("click", exportBackup);
+  element("#import-backup").addEventListener("click", () => element("#backup-file").click());
+  element("#backup-file").addEventListener("change", importBackup);
   element("#clear-cart").addEventListener("click", () => { cart = []; renderCart(getState().products, cart); });
   element("#complete-sale").addEventListener("click", completeSale);
   for (const [name, submit, modal] of [

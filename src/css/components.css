@@ -47,6 +47,7 @@
 .report-toolbar { align-items: end; justify-content: space-between; }
 .report-toolbar label { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 11px; font-weight: 700; }
 .report-toolbar select { margin: 0; }
+.report-backup-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .attention-item { display: flex; align-items: center; gap: 12px; padding: 13px 0; border-top: 1px solid var(--line); }
 .attention-item div { flex: 1; }
 .attention-item strong, .attention-item small { display: block; font-size: 12px; }

@@ -191,6 +191,9 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/users":
             if not self.require_role("admin"): return
             return self.save_user()
+        if self.path == "/api/backup/restore":
+            if not self.require_role("admin"): return
+            return self.restore_backup()
         if not self.require_user(): return
         if self.path == "/api/products" and self.has_role("admin","inventory"): return self.save_product()
         permissions={"/api/sales":("admin","seller"),"/api/movements":("admin","inventory"),
@@ -394,6 +397,38 @@ class Handler(BaseHTTPRequestHandler):
         except sqlite3.IntegrityError: self.json({"error":"Ese nombre de usuario ya existe"},409)
         except ValueError as error: self.json({"error":str(error)},400)
 
+    def restore_backup(self):
+        data = self.body()
+        products, suppliers = data.get("products", []), data.get("suppliers", [])
+        sales, movements, purchases = data.get("sales", []), data.get("movements", []), data.get("purchases", [])
+        collections = ((products, "productos"), (suppliers, "proveedores"), (sales, "ventas"), (movements, "movimientos"), (purchases, "compras"))
+        if any(not isinstance(items, list) or len(items) > 100_000 for items, _ in collections):
+            raise ValueError("El respaldo contiene listas inválidas")
+        if not products:
+            raise ValueError("El respaldo debe contener al menos un producto")
+        try:
+            with connect() as db:
+                db.execute("BEGIN IMMEDIATE")
+                for table in ("sale_items", "sales", "purchase_items", "purchases", "inventory_movements", "products", "suppliers"):
+                    db.execute(f"DELETE FROM {table}")
+                for item in suppliers:
+                    db.execute("INSERT INTO suppliers(id,name,tax_id,phone,email,created_at) VALUES(?,?,?,?,?,?)", (str(item["id"]), str(item.get("name", "")).strip(), str(item.get("taxId", "")), str(item.get("phone", "")), str(item.get("email", "")), str(item.get("createdAt") or now())))
+                for item in products:
+                    db.execute("INSERT INTO products(id,name,sku,category,price,stock,min_stock,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)", (str(item["id"]), str(item["name"]).strip(), str(item["sku"]).strip(), str(item.get("category", "")).strip(), integer(item["price"], "Precio"), integer(item["stock"], "Stock"), integer(item.get("min", 0), "Stock mínimo"), str(item.get("createdAt") or now()), str(item.get("updatedAt") or now())))
+                for sale in sales:
+                    db.execute("INSERT INTO sales(id,folio,customer,total,created_at) VALUES(?,?,?,?,?)", (str(sale["id"]), str(sale["folio"]), str(sale.get("customer", "")), integer(sale["total"], "Total"), str(sale.get("date") or now())))
+                    for item in line_items({"items": sale.get("items", [])}):
+                        db.execute("INSERT INTO sale_items(sale_id,product_id,product_name,price,quantity) VALUES(?,?,?,?,?)", (str(sale["id"]), str(item["id"]), str(item["name"]), integer(item["price"], "Precio"), integer(item["quantity"], "Cantidad", 1)))
+                for movement in movements:
+                    db.execute("INSERT INTO inventory_movements(id,product_id,product_name,movement_type,quantity,reason,responsible,sale_id,created_at) VALUES(?,?,?,?,?,?,?,?,?)", (str(movement["id"]), str(movement["productId"]), str(movement["productName"]), str(movement["type"]), int(movement["quantity"]), str(movement.get("reason", "")), str(movement.get("responsible", "")), movement.get("saleId"), str(movement.get("date") or now())))
+                for purchase in purchases:
+                    db.execute("INSERT INTO purchases(id,folio,supplier_id,supplier_name,document,responsible,notes,total,created_at) VALUES(?,?,?,?,?,?,?,?,?)", (str(purchase["id"]), str(purchase["folio"]), str(purchase["supplierId"]), str(purchase["supplierName"]), str(purchase.get("document", "")), str(purchase.get("responsible", "")), str(purchase.get("notes", "")), integer(purchase["total"], "Total"), str(purchase.get("date") or now())))
+                    for item in line_items({"items": purchase.get("items", [])}):
+                        db.execute("INSERT INTO purchase_items(purchase_id,product_id,product_name,unit_cost,quantity) VALUES(?,?,?,?,?)", (str(purchase["id"]), str(item["productId"]), str(item["productName"]), integer(item["unitCost"], "Costo unitario"), integer(item["quantity"], "Cantidad", 1)))
+            self.json({"restored": True})
+        except (KeyError, TypeError, ValueError) as error:
+            raise ValueError(f"Respaldo inválido: {error}")
+
     def create_user(self,data,role,initial=False):
         name=str(data.get("name","")).strip(); username=str(data.get("username","")).strip(); password=str(data.get("password",""))
         if role not in ("admin","seller","inventory"): raise ValueError("Rol inválido")
@@ -447,7 +482,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def body(self):
         length=int(self.headers.get("Content-Length",0))
-        if length<1 or length>1_000_000: raise ValueError("Tamaño de solicitud inválido")
+        if length<1 or length>20_000_000: raise ValueError("Tamaño de solicitud inválido")
         try:
             data=json.loads(self.rfile.read(length).decode("utf-8"))
             if not isinstance(data,dict): raise ValueError("Se esperaba un objeto JSON")

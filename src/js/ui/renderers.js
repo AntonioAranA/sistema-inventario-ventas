@@ -89,18 +89,24 @@ export function renderReports(state) {
   const revenue = sales.reduce((sum, sale) => sum + sale.total, 0);
   const units = sales.reduce((sum, sale) => sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
   const average = sales.length ? Math.round(revenue / sales.length) : 0;
+  const costs = new Map();
+  (state.purchases || []).flatMap((purchase) => purchase.items.map((item) => ({ ...item, date: purchase.date }))).sort((a, b) => new Date(b.date) - new Date(a.date)).forEach((item) => {
+    if (!costs.has(item.productId)) costs.set(item.productId, item.unitCost);
+  });
+  const estimatedProfit = sales.reduce((sum, sale) => sum + sale.items.reduce((itemSum, item) => itemSum + (item.price - (costs.get(item.id) || 0)) * item.quantity, 0), 0);
   const lowStock = state.products.filter((product) => product.stock <= product.min);
-  const metrics = [["Ventas", sales.length, "Transacciones", "🧾"], ["Ingresos", money.format(revenue), "Total vendido", "💰"], ["Unidades", units, "Productos vendidos", "📦"], ["Ticket promedio", money.format(average), "Por venta", "📈"]];
+  const metrics = [["Ventas", sales.length, "Transacciones", "🧾"], ["Ingresos", money.format(revenue), "Total vendido", "💰"], ["Ganancia estimada", money.format(estimatedProfit), "Según costos registrados", "📈"], ["Ticket promedio", money.format(average), `${units} unidades vendidas`, "📦"]];
   element("#report-metrics").innerHTML = metrics.map(metricTemplate).join("");
   const top = new Map();
   sales.forEach((sale) => sale.items.forEach((item) => {
-    const current = top.get(item.name) || { name: item.name, quantity: 0, revenue: 0 };
+    const current = top.get(item.name) || { name: item.name, quantity: 0, revenue: 0, profit: 0 };
     current.quantity += item.quantity;
     current.revenue += item.price * item.quantity;
+    current.profit += (item.price - (costs.get(item.id) || 0)) * item.quantity;
     top.set(item.name, current);
   }));
   const products = [...top.values()].sort((a, b) => b.quantity - a.quantity).slice(0, 10);
-  element("#top-products-table").innerHTML = products.map((item) => `<tr><td><strong>${escapeHtml(item.name)}</strong></td><td>${item.quantity}</td><td><strong>${money.format(item.revenue)}</strong></td></tr>`).join("");
+  element("#top-products-table").innerHTML = products.map((item) => `<tr><td><strong>${escapeHtml(item.name)}</strong></td><td>${item.quantity}</td><td><strong>${money.format(item.revenue)}</strong><small>Ganancia: ${money.format(item.profit)}</small></td></tr>`).join("");
   element("#top-products-empty").classList.toggle("hidden", products.length > 0);
   element("#report-stock-table").innerHTML = lowStock.sort((a, b) => (a.stock - a.min) - (b.stock - b.min)).map((product) => `<tr><td><strong>${escapeHtml(product.name)}</strong><small>${escapeHtml(product.sku)}</small></td><td><span class="stock-number">${product.stock}</span></td><td>${product.min}</td></tr>`).join("");
   element("#report-stock-empty").classList.toggle("hidden", lowStock.length > 0);

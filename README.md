@@ -35,7 +35,9 @@ no sustituyen una comprobación visual en navegador.
 
 - Panel con ventas del día, valor de inventario y alertas.
 - Reportes por periodo con ventas, ingresos, ticket promedio y productos más vendidos.
+- Estimación de ganancias a partir de los costos registrados en compras.
 - Exportación de ventas e inventario a CSV y respaldo completo en JSON.
+- Restauración de respaldos JSON disponible para administradores.
 - Alertas automáticas y visibles para productos bajo el stock mínimo.
 - Alta, edición, búsqueda, filtrado y eliminación de productos.
 - Punto de venta con carrito y control de existencias.
