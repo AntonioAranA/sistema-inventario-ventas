@@ -7,6 +7,7 @@ export const VIEW_TITLES = {
   purchases: "Abastecimiento",
   sales: "Nueva venta",
   history: "Historial de ventas",
+  reports: "Reportes",
   users: "Usuarios",
 };
 

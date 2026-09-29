@@ -371,6 +371,17 @@ html.dark-mode {
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
 }
 
+.dark-mode .stock-alert {
+  border-color: #75463f;
+  background: #392521;
+  color: #ffb0a5;
+}
+
+.dark-mode .stock-alert span,
+.dark-mode .stock-alert .text-button {
+  color: #f0aaa1;
+}
+
 /* Contraste alto */
 html.high-contrast {
   --line: currentColor;

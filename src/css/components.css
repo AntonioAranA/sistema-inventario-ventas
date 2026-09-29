@@ -41,6 +41,12 @@
 .badge.low { background: #fae9e6; color: var(--danger); }
 
 .attention-list { margin-top: 14px; }
+.stock-alert { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; padding: 14px 17px; border: 1px solid #edc7be; border-radius: 12px; background: #fff4f1; color: #8b3d31; font-size: 12px; }
+.stock-alert span { flex: 1; color: #9d665d; }
+.stock-alert .text-button { color: #8b3d31; white-space: nowrap; }
+.report-toolbar { align-items: end; justify-content: space-between; }
+.report-toolbar label { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 11px; font-weight: 700; }
+.report-toolbar select { margin: 0; }
 .attention-item { display: flex; align-items: center; gap: 12px; padding: 13px 0; border-top: 1px solid var(--line); }
 .attention-item div { flex: 1; }
 .attention-item strong, .attention-item small { display: block; font-size: 12px; }

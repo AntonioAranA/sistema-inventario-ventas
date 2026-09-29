@@ -1,6 +1,6 @@
 @media (max-width: 1000px) {
   .metrics { grid-template-columns: 1fr 1fr; }
-  .dashboard-grid, .sale-layout { grid-template-columns: 1fr; }
+  .dashboard-grid, .sale-layout, .report-grid { grid-template-columns: 1fr; }
   .purchases-layout { grid-template-columns: 1fr; }
   .cart { position: static; }
   .product-grid { grid-template-columns: 1fr 1fr; }
@@ -37,6 +37,9 @@
   .purchase-line { grid-template-columns: 1fr 1fr; }
   .purchase-line label:first-child { grid-column: 1 / -1; }
   .heading-actions { flex-direction: column; }
+  .report-toolbar label { display: block; }
+  .stock-alert { align-items: flex-start; flex-wrap: wrap; }
+  .stock-alert span { flex-basis: 100%; }
   .user-menu {
     display: block;
     max-width: 95px;

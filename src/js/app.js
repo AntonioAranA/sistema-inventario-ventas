@@ -4,7 +4,8 @@ import { escapeHtml, formatDate, money } from "./utils/formatters.js";
 import { changePassword, getCurrentUser, initializeAuth, logout } from "./auth.js";
 import { showToast } from "./ui/notifications.js";
 import { initializeAccessibility } from "./ui/accessibility.js";
-import { renderAll, renderCart, renderMovements, renderProducts, renderSaleProducts } from "./ui/renderers.js";
+import { loadComponents, loadViews } from "./ui/views.js";
+import { renderAll, renderCart, renderMovements, renderProducts, renderReports, renderSaleProducts } from "./ui/renderers.js";
 
 let cart = [];
 let purchaseItems = [];
@@ -13,6 +14,52 @@ let salePending = false;
 let currentUser = null;
 const element = (selector) => document.querySelector(selector);
 const refresh = () => renderAll(getState(), cart);
+
+function downloadFile(filename, content, type = "text/csv;charset=utf-8") {
+  const blob = new Blob(["\uFEFF", content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.style.display = "none";
+  document.body.append(link);
+  link.click();
+  setTimeout(() => { link.remove(); URL.revokeObjectURL(url); }, 1000);
+}
+
+function csvCell(value) {
+  return `"${String(value ?? "").replaceAll('"', '""')}"`;
+}
+
+function csvRows(rows) {
+  // El punto y coma funciona mejor con Excel configurado en español.
+  return rows.map((row) => row.map(csvCell).join(";")).join("\r\n");
+}
+
+function exportSales() {
+  const period = element("#report-period").value;
+  const limit = period === "all" ? null : new Date(Date.now() - Number(period) * 86400000);
+  const rows = [["Folio", "Fecha", "Cliente", "Producto", "SKU", "Cantidad", "Precio unitario", "Subtotal"]];
+  const state = getState();
+  [...state.sales].filter((sale) => !limit || new Date(sale.date) >= limit).sort((a, b) => new Date(a.date) - new Date(b.date)).forEach((sale) => sale.items.forEach((item) => {
+    const product = state.products.find(({ id }) => id === item.id || id === item.productId);
+    rows.push([sale.folio, formatDate(sale.date, true), sale.customer || "Venta mostrador", item.name, product?.sku || "", item.quantity, item.price, item.price * item.quantity]);
+  }));
+  downloadFile(`ventas-${new Date().toISOString().slice(0, 10)}.csv`, csvRows(rows));
+  showToast("Reporte de ventas descargado");
+}
+
+function exportInventory() {
+  const rows = [["Producto", "SKU", "Categoría", "Precio de venta", "Stock actual", "Stock mínimo", "Diferencia", "Estado"]];
+  [...getState().products].sort((a, b) => `${a.category}${a.name}`.localeCompare(`${b.category}${b.name}`, "es")).forEach((product) => rows.push([product.name, product.sku, product.category, product.price, product.stock, product.min, product.stock - product.min, product.stock <= product.min ? "Stock bajo" : "Disponible"]));
+  downloadFile(`inventario-${new Date().toISOString().slice(0, 10)}.csv`, csvRows(rows));
+  showToast("Reporte de inventario descargado");
+}
+
+function exportBackup() {
+  downloadFile(`respaldo-inventario-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify({ exportedAt: new Date().toISOString(), ...getState() }, null, 2), "application/json;charset=utf-8");
+  showToast("Respaldo descargado");
+}
 
 function navigate(view) {
   const role = getCurrentUser()?.role;
@@ -287,6 +334,7 @@ async function completeSale() {
 }
 
 async function handleDocumentClick(event) {
+  const go = event.target.closest("[data-go]");
   const edit = event.target.closest(".edit-product");
   const remove = event.target.closest(".delete-button");
   const add = event.target.closest("[data-add]");
@@ -297,6 +345,7 @@ async function handleDocumentClick(event) {
   const editSupplier = event.target.closest(".edit-supplier");
   const viewPurchase = event.target.closest(".view-purchase");
   const toggleUser = event.target.closest(".toggle-user");
+  if (go) navigate(go.dataset.go);
   if (edit) openProductModal(edit.dataset.id);
   if (add) addToCart(add.dataset.add);
   if (increment) changeQuantity(increment.dataset.inc, 1);
@@ -328,7 +377,6 @@ async function handleDocumentClick(event) {
 function bindEvents() {
   window.addEventListener("hashchange", () => navigate(location.hash.slice(1)));
   document.querySelectorAll(".nav-item").forEach((button) => button.addEventListener("click", () => navigate(button.dataset.view)));
-  document.querySelectorAll("[data-go]").forEach((button) => button.addEventListener("click", () => navigate(button.dataset.go)));
   document.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", () => element("#product-modal").close()));
   document.querySelectorAll("[data-close-movement]").forEach((button) => button.addEventListener("click", () => element("#movement-modal").close()));
   document.querySelectorAll("[data-close-supplier]").forEach((button) => button.addEventListener("click", () => element("#supplier-modal").close()));
@@ -355,6 +403,10 @@ function bindEvents() {
   element("#sale-search").addEventListener("input", () => renderSaleProducts(getState().products));
   element("#movement-search").addEventListener("input", () => renderMovements(getState().movements));
   element("#movement-filter").addEventListener("change", () => renderMovements(getState().movements));
+  element("#report-period").addEventListener("change", () => renderReports(getState()));
+  element("#export-sales").addEventListener("click", exportSales);
+  element("#export-inventory").addEventListener("click", exportInventory);
+  element("#export-all").addEventListener("click", exportBackup);
   element("#clear-cart").addEventListener("click", () => { cart = []; renderCart(getState().products, cart); });
   element("#complete-sale").addEventListener("click", completeSale);
   for (const [name, submit, modal] of [
@@ -382,6 +434,8 @@ function bindEvents() {
 
 async function startApp() {
   try {
+    await loadComponents();
+    await loadViews();
     element("#today").textContent = formatDate(new Date());
     initializeAccessibility();
     currentUser = await initializeAuth();

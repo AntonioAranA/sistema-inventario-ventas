@@ -8,6 +8,7 @@ export function renderAll(state, cart) {
   renderSaleProducts(state.products);
   renderCart(state.products, cart);
   renderHistory(state.sales);
+  renderReports(state);
   renderMovements(state.movements || []);
   renderPurchases(state.purchases || [], state.suppliers || []);
 }
@@ -27,6 +28,13 @@ export function renderDashboard(state) {
   ];
 
   element("#metrics").innerHTML = metrics.map(metricTemplate).join("");
+  const alert = element("#stock-alert");
+  if (alert) {
+    alert.hidden = lowStock.length === 0;
+    alert.innerHTML = lowStock.length
+      ? `<strong>⚠️ ${lowStock.length} ${lowStock.length === 1 ? "producto necesita" : "productos necesitan"} reposición</strong><span>${lowStock.slice(0, 3).map((product) => `${escapeHtml(product.name)} (${product.stock} uds.)`).join(" · ")}${lowStock.length > 3 ? " · …" : ""}</span><button class="text-button" data-go="inventory">Revisar inventario →</button>`
+      : "";
+  }
   element("#low-stock-list").innerHTML = lowStock.length
     ? lowStock.slice(0, 4).map(lowStockTemplate).join("")
     : '<div class="empty">Todos los productos tienen stock suficiente.</div>';
@@ -72,6 +80,30 @@ export function renderHistory(sales) {
   const ordered = [...sales].sort((a, b) => new Date(b.date) - new Date(a.date));
   element("#history-table").innerHTML = ordered.map(historyRowTemplate).join("");
   element("#history-empty").classList.toggle("hidden", ordered.length > 0);
+}
+
+export function renderReports(state) {
+  const period = element("#report-period")?.value || "30";
+  const limit = period === "all" ? null : new Date(Date.now() - Number(period) * 86400000);
+  const sales = state.sales.filter((sale) => !limit || new Date(sale.date) >= limit);
+  const revenue = sales.reduce((sum, sale) => sum + sale.total, 0);
+  const units = sales.reduce((sum, sale) => sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
+  const average = sales.length ? Math.round(revenue / sales.length) : 0;
+  const lowStock = state.products.filter((product) => product.stock <= product.min);
+  const metrics = [["Ventas", sales.length, "Transacciones", "🧾"], ["Ingresos", money.format(revenue), "Total vendido", "💰"], ["Unidades", units, "Productos vendidos", "📦"], ["Ticket promedio", money.format(average), "Por venta", "📈"]];
+  element("#report-metrics").innerHTML = metrics.map(metricTemplate).join("");
+  const top = new Map();
+  sales.forEach((sale) => sale.items.forEach((item) => {
+    const current = top.get(item.name) || { name: item.name, quantity: 0, revenue: 0 };
+    current.quantity += item.quantity;
+    current.revenue += item.price * item.quantity;
+    top.set(item.name, current);
+  }));
+  const products = [...top.values()].sort((a, b) => b.quantity - a.quantity).slice(0, 10);
+  element("#top-products-table").innerHTML = products.map((item) => `<tr><td><strong>${escapeHtml(item.name)}</strong></td><td>${item.quantity}</td><td><strong>${money.format(item.revenue)}</strong></td></tr>`).join("");
+  element("#top-products-empty").classList.toggle("hidden", products.length > 0);
+  element("#report-stock-table").innerHTML = lowStock.sort((a, b) => (a.stock - a.min) - (b.stock - b.min)).map((product) => `<tr><td><strong>${escapeHtml(product.name)}</strong><small>${escapeHtml(product.sku)}</small></td><td><span class="stock-number">${product.stock}</span></td><td>${product.min}</td></tr>`).join("");
+  element("#report-stock-empty").classList.toggle("hidden", lowStock.length > 0);
 }
 
 export function renderMovements(movements) {

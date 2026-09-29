@@ -16,3 +16,4 @@ main { grid-column: 2; width: 100%; max-width: 1600px; padding: 0 46px 60px; }
 .span-2 { grid-column: span 2; }
 .purchases-layout { display: grid; grid-template-columns: 1.5fr .75fr; align-items: start; gap: 18px; }
 .purchase-summary { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 18px; }
+.report-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 18px; }
