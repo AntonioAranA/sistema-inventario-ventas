@@ -34,6 +34,9 @@ no sustituyen una comprobación visual en navegador.
 ## Funciones incluidas
 
 - Panel con ventas del día, valor de inventario y alertas.
+- Reportes por periodo con ventas, ingresos, ticket promedio y productos más vendidos.
+- Exportación de ventas e inventario a CSV y respaldo completo en JSON.
+- Alertas automáticas y visibles para productos bajo el stock mínimo.
 - Alta, edición, búsqueda, filtrado y eliminación de productos.
 - Punto de venta con carrito y control de existencias.
 - Descuento automático de stock al completar una venta.
@@ -52,6 +55,20 @@ Los productos y las ventas se guardan en SQLite dentro de `data/inventory.db`. L
 
 ```text
 src/
+├── components/         Layout, diálogos, autenticación y avisos
+│   ├── layout.html
+│   ├── dialogs.html
+│   ├── auth.html
+│   └── toast.html
+├── views/              Vistas HTML independientes
+│   ├── dashboard.html
+│   ├── inventory.html
+│   ├── movements.html
+│   ├── purchases.html
+│   ├── sales.html
+│   ├── history.html
+│   ├── reports.html
+│   └── users.html
 ├── css/
 │   ├── base.css          Variables y estilos globales
 │   ├── layout.css        Estructura y grillas
