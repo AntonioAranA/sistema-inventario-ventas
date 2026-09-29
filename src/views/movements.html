@@ -1,0 +1,32 @@
+<section class="view" id="movements-view">
+          <div class="section-heading">
+            <div>
+              <h2>
+                Movimientos de stock
+              </h2>
+              <p class="muted">
+                Revisa cada entrada y salida de tus productos.
+              </p>
+            </div>
+            <button class="primary" id="add-movement">
+              ＋ Registrar movimiento
+            </button>
+          </div>
+          <div class="toolbar panel">
+            <label class="search"><span>⌕</span><input id="movement-search" placeholder="Buscar producto, motivo o responsable…" /></label><select id="movement-filter"><option value="all">Todos los movimientos</option><option value="entry">Entradas</option><option value="sale">Ventas</option><option value="return">Devoluciones</option><option value="loss">Pérdidas</option><option value="adjustment">Ajustes</option></select>
+          </div>
+          <div class="panel table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th><th>Producto</th><th>Tipo</th><th>Cantidad</th><th>Motivo</th><th>Responsable</th>
+                </tr>
+              </thead>
+              <tbody id="movements-table">
+              </tbody>
+            </table>
+            <div class="empty hidden" id="movements-empty">
+              No hay movimientos con esos filtros.
+            </div>
+          </div>
+        </section>

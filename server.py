@@ -465,7 +465,7 @@ class Handler(BaseHTTPRequestHandler):
         target=(ROOT/relative).resolve()
         public_root = ROOT / "src"
         allowed = target in (ROOT / "index.html", ROOT / "styles.css") or (
-            public_root in target.parents and target.suffix in (".js", ".css")
+            public_root in target.parents and target.suffix in (".js", ".css", ".html")
         )
         if not allowed: return self.send_error(404)
         if (ROOT not in target.parents and target!=ROOT) or not target.is_file(): return self.send_error(404)

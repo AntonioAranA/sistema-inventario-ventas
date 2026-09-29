@@ -1,0 +1,256 @@
+<dialog id="product-modal">
+      <form method="dialog" id="product-form">
+        <div class="modal-heading">
+          <div>
+            <span class="label">INVENTARIO</span>
+            <h2 id="modal-title">
+              Nuevo producto
+            </h2>
+          </div>
+          <button type="button" class="icon-button" data-close>
+            ×
+          </button>
+        </div>
+        <input type="hidden" id="product-id" />
+        <p class="muted product-form-note">
+          Los productos nuevos comienzan con stock 0. Las existencias se ingresan desde Abastecimiento o Movimientos.
+        </p>
+        <div class="form-grid">
+          <label class="span-2">Nombre del producto<input id="product-name" required placeholder="Ej. Café molido 500 g" /></label><label>SKU<input id="product-sku" required placeholder="CAF-001" /></label><label>Categoría<input id="product-category" required placeholder="Abarrotes" /></label><label>Precio de venta<input id="product-price" required type="number" min="0" step="1" /></label><label>Avisar cuando queden<input id="product-min" required type="number" min="0" step="1" value="5" /></label>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="secondary" data-close>
+            Cancelar
+          </button>
+          <button class="primary" value="save">
+            Guardar producto
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="accessibility-modal" class="settings-modal">
+      <div class="settings-content">
+        <div class="modal-heading">
+          <div>
+            <span class="label">Preferencias</span>
+            <h2>
+              Accesibilidad
+            </h2>
+          </div>
+          <button type="button" class="icon-button" data-close-accessibility aria-label="Cerrar">
+            ×
+          </button>
+        </div>
+        <p class="muted settings-intro">
+          Ajusta la pantalla para que te resulte más cómoda.
+        </p>
+        <div class="settings-list">
+          <label class="setting-row"><span><strong>Contraste alto</strong><small>Destaca textos, bordes y botones</small></span><input type="checkbox" id="high-contrast" class="switch" /></label><label class="setting-row"><span><strong>Texto más grande</strong><small>Aumenta el tamaño general del contenido</small></span><input type="checkbox" id="large-text" class="switch" /></label><label class="setting-row"><span><strong>Reducir movimientos</strong><small>Desactiva transiciones y desplazamientos</small></span><input type="checkbox" id="reduced-motion" class="switch" /></label>
+        </div>
+        <section class="reader-settings" aria-labelledby="reader-title">
+          <div class="reader-heading">
+            <div>
+              <strong id="reader-title">Lector de texto</strong><small>Escucha el contenido de la pantalla actual</small>
+            </div>
+            <span class="reader-status" id="reader-status" aria-live="polite">Listo</span>
+          </div>
+          <label class="reader-field">Voz<select id="reader-voice" aria-label="Seleccionar voz"></select></label><label class="reader-field">Velocidad<output id="reader-rate-value">1×</output><input id="reader-rate" type="range" min="0.6" max="1.6" step="0.1" value="1" /></label>
+          <div class="reader-actions">
+            <button type="button" class="primary" id="reader-play">
+              ▶ Leer pantalla
+            </button>
+            <button type="button" class="secondary" id="reader-pause">
+              Pausar
+            </button>
+            <button type="button" class="secondary" id="reader-stop">
+              Detener
+            </button>
+          </div>
+        </section>
+        <button type="button" class="secondary wide" id="reset-accessibility">
+          Restablecer preferencias
+        </button>
+      </div>
+    </dialog>
+    <dialog id="movement-modal">
+      <form method="dialog" id="movement-form">
+        <div class="modal-heading">
+          <div>
+            <span class="label">Inventario</span>
+            <h2>
+              Registrar movimiento
+            </h2>
+          </div>
+          <button type="button" class="icon-button" data-close-movement aria-label="Cerrar">
+            ×
+          </button>
+        </div>
+        <p class="muted movement-intro">
+          La cantidad del producto se actualizará al guardar.
+        </p>
+        <div class="form-grid">
+          <label class="span-2">Producto<select id="movement-product" required></select></label><label>Tipo<select id="movement-type" required><option value="entry">Entrada de mercadería</option><option value="return">Devolución de cliente</option><option value="loss">Pérdida o merma</option><option value="adjustment_in">Ajuste: aumentar</option><option value="adjustment_out">Ajuste: disminuir</option></select></label><label>Cantidad<input id="movement-quantity" required type="number" min="1" step="1" value="1" /></label><label class="span-2">Motivo<input id="movement-reason" required placeholder="Ej. Recepción de pedido semanal" /></label>
+          <p class="span-2 responsible-note">
+            El responsable será el usuario que inició sesión.
+          </p>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="secondary" data-close-movement>
+            Cancelar
+          </button>
+          <button class="primary" value="save">
+            Guardar movimiento
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="supplier-modal">
+      <form method="dialog" id="supplier-form">
+        <div class="modal-heading">
+          <div>
+            <span class="label">Proveedores</span>
+            <h2 id="supplier-modal-title">
+              Nuevo proveedor
+            </h2>
+          </div>
+          <button type="button" class="icon-button" data-close-supplier aria-label="Cerrar">
+            ×
+          </button>
+        </div>
+        <input type="hidden" id="supplier-id" />
+        <div class="form-grid">
+          <label class="span-2">Nombre o razón social<input id="supplier-name" required /></label><label>RUT o identificación<input id="supplier-tax-id" /></label><label>Teléfono<input id="supplier-phone" type="tel" /></label><label class="span-2">Correo electrónico<input id="supplier-email" type="email" /></label>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="secondary" data-close-supplier>
+            Cancelar
+          </button>
+          <button class="primary" value="save">
+            Guardar proveedor
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="purchase-modal" class="purchase-modal">
+      <form method="dialog" id="purchase-form">
+        <div class="modal-heading">
+          <div>
+            <span class="label">Recepción de mercadería</span>
+            <h2>
+              Nueva compra
+            </h2>
+          </div>
+          <button type="button" class="icon-button" data-close-purchase aria-label="Cerrar">
+            ×
+          </button>
+        </div>
+        <div class="form-grid purchase-details">
+          <label>Proveedor<select id="purchase-supplier" required></select></label><label>Factura o documento<input id="purchase-document" placeholder="Ej. Factura 1045" /></label>
+          <p class="span-2 responsible-note">
+            La compra quedará asociada al usuario que inició sesión.
+          </p>
+        </div>
+        <div class="purchase-line">
+          <label>Producto<select id="purchase-product"></select></label><label>Cantidad<input id="purchase-quantity" type="number" min="1" value="1" /></label><label>Costo unitario<input id="purchase-cost" type="number" min="0" value="0" /></label>
+          <button type="button" class="secondary" id="add-purchase-item">
+            Agregar
+          </button>
+        </div>
+        <div id="purchase-items" class="purchase-items">
+        </div>
+        <label class="purchase-notes">Notas<input id="purchase-notes" placeholder="Observaciones opcionales" /></label>
+        <div class="purchase-total">
+          <span>Total de la compra</span><strong id="purchase-total">$0</strong>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="secondary" data-close-purchase>
+            Cancelar
+          </button>
+          <button class="primary" value="save">
+            Recibir compra
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="purchase-detail-modal" class="purchase-modal">
+      <div class="purchase-detail">
+        <div class="modal-heading">
+          <div>
+            <span class="label">Detalle de recepción</span>
+            <h2 id="purchase-detail-title">
+              Compra
+            </h2>
+          </div>
+          <button type="button" class="icon-button" data-close-purchase-detail aria-label="Cerrar">
+            ×
+          </button>
+        </div>
+        <div id="purchase-detail-content">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="primary" data-close-purchase-detail>
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </dialog>
+    <dialog id="user-modal">
+      <form method="dialog" id="user-form">
+        <div class="modal-heading">
+          <div>
+            <span class="label">Equipo</span>
+            <h2>
+              Nuevo usuario
+            </h2>
+          </div>
+          <button type="button" class="icon-button" data-close-user>
+            ×
+          </button>
+        </div>
+        <div class="form-grid">
+          <label class="span-2">Nombre completo<input id="user-name" required /></label><label>Nombre de usuario<input id="user-username" required minlength="3" /></label><label>Rol<select id="user-role"><option value="seller">Vendedor</option><option value="inventory">Inventario</option><option value="admin">Administrador</option></select></label><label class="span-2">Contraseña inicial<input id="user-password" required type="password" minlength="8" /></label>
+        </div>
+        <div class="role-help">
+          <strong>Permisos del rol</strong>
+          <p id="role-description">
+          </p>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="secondary" data-close-user>
+            Cancelar
+          </button>
+          <button class="primary" value="save">
+            Crear usuario
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="account-modal">
+      <div class="account-content">
+        <div class="modal-heading">
+          <div>
+            <span class="label">Mi cuenta</span>
+            <h2 id="account-name">
+              Usuario
+            </h2>
+          </div>
+          <button type="button" class="icon-button" data-close-account>
+            ×
+          </button>
+        </div>
+        <p class="account-role" id="account-role">
+        </p>
+        <form id="password-form">
+          <h3>
+            Cambiar contraseña
+          </h3>
+          <label>Contraseña actual<input id="current-password" type="password" required autocomplete="current-password" /></label><label>Nueva contraseña<input id="new-password" type="password" required minlength="8" autocomplete="new-password" /></label><label>Repetir nueva contraseña<input id="confirm-password" type="password" required minlength="8" autocomplete="new-password" /></label>
+          <button class="primary wide" value="save">
+            Actualizar contraseña
+          </button>
+        </form>
+        <button type="button" class="secondary wide logout-button" id="logout-button">
+          Cerrar sesión
+        </button>
+      </div>
+    </dialog>

@@ -1,0 +1,61 @@
+<section class="view active" id="dashboard-view">
+          <div class="hero-row">
+            <div>
+              <h2>
+                ¡Hola! Así va tu negocio 👋
+              </h2>
+              <p class="muted">
+                Revisa lo importante y sigue con tu día.
+              </p>
+            </div>
+          </div>
+          <div class="metrics" id="metrics">
+          </div>
+          <div id="stock-alert" class="stock-alert" role="status" hidden>
+          </div>
+          <div class="dashboard-grid">
+            <article class="panel chart-panel">
+              <div class="panel-heading">
+                <div>
+                  <span class="label">Esta semana</span>
+                  <h3 id="week-total">
+                    $0
+                  </h3>
+                </div>
+                <span class="trend" id="sales-count"></span>
+              </div>
+              <div class="chart" id="sales-chart">
+              </div>
+            </article>
+            <article class="panel">
+              <div class="panel-heading">
+                <div>
+                  <span class="label">Para revisar</span>
+                  <h3>
+                    Productos por reponer
+                  </h3>
+                </div>
+                <button class="text-button" data-go="inventory">
+                  Ver productos →
+                </button>
+              </div>
+              <div id="low-stock-list" class="attention-list">
+              </div>
+            </article>
+          </div>
+          <article class="panel recent-panel">
+            <div class="panel-heading">
+              <div>
+                <span class="label">Lo más reciente</span>
+                <h3>
+                  Últimas ventas
+                </h3>
+              </div>
+              <button class="text-button" data-go="history">
+                Ver todas →
+              </button>
+            </div>
+            <div id="recent-sales">
+            </div>
+          </article>
+        </section>

@@ -1,0 +1,74 @@
+<section class="view" id="reports-view">
+          <div class="section-heading">
+            <div>
+              <h2>
+                Reportes
+              </h2>
+              <p class="muted">
+                Entiende tus ventas, productos y existencias.
+              </p>
+            </div>
+            <div class="heading-actions">
+              <button class="secondary" id="export-sales">
+                Exportar ventas CSV
+              </button>
+              <button class="primary" id="export-inventory">
+                Exportar inventario CSV
+              </button>
+            </div>
+          </div>
+          <div class="toolbar panel report-toolbar">
+            <label>Periodo<select id="report-period"><option value="7">Últimos 7 días</option><option value="30" selected>Últimos 30 días</option><option value="all">Todo el historial</option></select></label>
+            <button class="secondary" id="export-all">
+              Descargar respaldo JSON
+            </button>
+          </div>
+          <div class="metrics" id="report-metrics">
+          </div>
+          <div class="report-grid">
+            <article class="panel table-wrap">
+              <div class="subsection-heading">
+                <div>
+                  <span class="label">Rendimiento</span>
+                  <h3>
+                    Productos más vendidos
+                  </h3>
+                </div>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Producto</th><th>Unidades</th><th>Ingresos</th>
+                  </tr>
+                </thead>
+                <tbody id="top-products-table">
+                </tbody>
+              </table>
+              <div class="empty hidden" id="top-products-empty">
+                Aún no hay ventas en este periodo.
+              </div>
+            </article>
+            <article class="panel table-wrap">
+              <div class="subsection-heading">
+                <div>
+                  <span class="label">Inventario</span>
+                  <h3>
+                    Alertas de stock
+                  </h3>
+                </div>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Producto</th><th>Stock</th><th>Mínimo</th>
+                  </tr>
+                </thead>
+                <tbody id="report-stock-table">
+                </tbody>
+              </table>
+              <div class="empty hidden" id="report-stock-empty">
+                No hay productos bajo el mínimo.
+              </div>
+            </article>
+          </div>
+        </section>

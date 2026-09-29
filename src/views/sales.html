@@ -1,0 +1,43 @@
+<section class="view" id="sales-view">
+          <div class="section-heading">
+            <div>
+              <h2>
+                Registrar una venta
+              </h2>
+              <p class="muted">
+                Elige los productos que lleva tu cliente.
+              </p>
+            </div>
+          </div>
+          <div class="sale-layout">
+            <article class="panel product-picker">
+              <label class="search"><span>⌕</span><input id="sale-search" placeholder="Buscar producto…" autofocus /></label>
+              <div id="sale-products" class="product-grid">
+              </div>
+            </article>
+            <aside class="panel cart">
+              <div class="panel-heading">
+                <div>
+                  <span class="label">Carrito</span>
+                  <h3>
+                    Esta venta
+                  </h3>
+                </div>
+                <button class="text-button danger-text" id="clear-cart">
+                  Vaciar
+                </button>
+              </div>
+              <div id="cart-items" class="cart-items">
+              </div>
+              <div class="cart-footer">
+                <label>Cliente (opcional)<input id="customer-name" placeholder="Ej. María" /></label>
+                <div class="total-line">
+                  <span>Total a pagar</span><strong id="cart-total">$0</strong>
+                </div>
+                <button class="primary wide" id="complete-sale">
+                  Confirmar venta
+                </button>
+              </div>
+            </aside>
+          </div>
+        </section>

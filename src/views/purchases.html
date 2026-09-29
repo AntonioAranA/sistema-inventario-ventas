@@ -1,0 +1,72 @@
+<section class="view" id="purchases-view">
+          <div class="section-heading">
+            <div>
+              <h2>
+                Abastecimiento
+              </h2>
+              <p class="muted">
+                Gestiona la llegada de mercadería y tus proveedores.
+              </p>
+            </div>
+            <div class="heading-actions">
+              <button class="secondary" id="add-supplier">
+                ＋ Proveedor
+              </button>
+              <button class="primary" id="add-purchase">
+                ＋ Nueva compra
+              </button>
+            </div>
+          </div>
+          <div class="purchase-summary" id="purchase-summary">
+          </div>
+          <div class="supply-tabs" role="tablist" aria-label="Secciones de abastecimiento">
+            <button class="supply-tab active" data-supply-tab="purchases" role="tab" aria-selected="true">
+              Compras
+            </button>
+            <button class="supply-tab" data-supply-tab="suppliers" role="tab" aria-selected="false">
+              Proveedores<span class="count-badge" id="supplier-count">0</span>
+            </button>
+          </div>
+          <div class="supply-panel active" id="supply-purchases">
+            <div class="toolbar panel">
+              <label class="search"><span>⌕</span><input id="purchase-search" placeholder="Buscar por proveedor, folio o documento…" /></label><select id="purchase-period"><option value="all">Todas las fechas</option><option value="30">Últimos 30 días</option><option value="7">Últimos 7 días</option></select>
+            </div>
+            <article class="panel table-wrap">
+              <div class="subsection-heading">
+                <div>
+                  <span class="label">Recepciones</span>
+                  <h3>
+                    Historial de compras
+                  </h3>
+                </div>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Folio</th><th>Fecha</th><th>Proveedor</th><th>Documento</th><th>Total</th><th></th>
+                  </tr>
+                </thead>
+                <tbody id="purchases-table">
+                </tbody>
+              </table>
+              <div class="empty hidden" id="purchases-empty">
+                No encontramos compras con esos filtros.
+              </div>
+            </article>
+          </div>
+          <div class="supply-panel" id="supply-suppliers">
+            <article class="panel suppliers-panel">
+              <div class="subsection-heading">
+                <div>
+                  <span class="label">Contactos</span>
+                  <h3>
+                    Proveedores
+                  </h3>
+                </div>
+              </div>
+              <label class="supplier-search"><input id="supplier-search" placeholder="Buscar proveedor…" /></label>
+              <div id="suppliers-list">
+              </div>
+            </article>
+          </div>
+        </section>

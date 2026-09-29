@@ -1,0 +1,32 @@
+<section class="view" id="inventory-view">
+          <div class="section-heading">
+            <div>
+              <h2>
+                Mis productos
+              </h2>
+              <p class="muted">
+                Administra el catálogo, precios y alertas de stock.
+              </p>
+            </div>
+            <button class="primary" id="add-product">
+              ＋ Crear producto
+            </button>
+          </div>
+          <div class="toolbar panel">
+            <label class="search"><span>⌕</span><input id="product-search" placeholder="Buscar por nombre, SKU o categoría…" /></label><select id="stock-filter"><option value="all">Todos los productos</option><option value="low">Stock bajo</option><option value="available">Con stock</option></select>
+          </div>
+          <div class="panel table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Producto</th><th>SKU</th><th>Categoría</th><th>Precio</th><th>Stock</th><th>Estado</th><th></th>
+                </tr>
+              </thead>
+              <tbody id="products-table">
+              </tbody>
+            </table>
+            <div class="empty hidden" id="products-empty">
+              No encontramos productos con esos filtros.
+            </div>
+          </div>
+        </section>
