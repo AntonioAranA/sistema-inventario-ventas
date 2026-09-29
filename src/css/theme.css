@@ -1,0 +1,208 @@
+/* Identidad visual cálida y cotidiana para el comercio. */
+:root {
+  --ink: #303833;
+  --muted: #68716c;
+  --paper: #efeee8;
+  --panel: #f9f8f3;
+  --line: #dedbd2;
+  --green: #3f7055;
+  --green-soft: #e4ede6;
+  --gold: #e6a54e;
+  --danger: #b95850;
+  --shadow: 0 3px 14px rgba(49, 58, 53, 0.055);
+}
+
+body {
+  font-family: "Segoe UI", Inter, system-ui, sans-serif;
+}
+
+h2,
+h3,
+.topbar h1,
+.brand strong,
+.metric strong,
+.total-line strong {
+  font-family: inherit;
+  letter-spacing: -0.025em;
+}
+
+.sidebar {
+  background: #f6f4ed;
+  color: var(--ink);
+  border-right: 1px solid var(--line);
+}
+
+.brand {
+  margin-bottom: 42px;
+}
+
+.brand-mark {
+  border-radius: 12px;
+  background: #f7b85f;
+  color: #513719;
+  font-family: inherit;
+}
+
+.brand small {
+  color: #7d867f;
+}
+
+.nav-item {
+  color: #626c66;
+  font-weight: 600;
+}
+
+.nav-item span {
+  font-size: 16px;
+  filter: saturate(0.75);
+}
+
+.nav-item:hover {
+  background: #eae7de;
+  color: var(--ink);
+}
+
+.nav-item.active {
+  background: #eaf2ec;
+  color: #27563d;
+}
+
+.sidebar-note {
+  color: #505b55;
+  background: #eceae2;
+  border-radius: 12px;
+}
+
+.sidebar-note small {
+  color: #8b938e;
+}
+
+.topbar {
+  height: 96px;
+  margin-bottom: 32px;
+}
+
+input,
+select {
+  background: #fbfaf6;
+  border-color: #d8d5cc;
+}
+
+input::placeholder {
+  color: #939a95;
+}
+
+.eyebrow {
+  color: #9a8464;
+  letter-spacing: 0.08em;
+}
+
+.label {
+  color: #858c87;
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.primary {
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.panel,
+.metric {
+  border-color: var(--line);
+  border-radius: 13px;
+}
+
+.panel {
+  background: var(--panel);
+}
+
+.metric {
+  position: relative;
+  overflow: hidden;
+}
+
+.metric::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 56px;
+  height: 4px;
+  background: #f3b763;
+  content: "";
+}
+
+.metric-icon {
+  background: #eeeae0;
+  font-size: 15px;
+}
+
+.metric strong {
+  font-size: 25px;
+}
+
+.product-card {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(52, 64, 57, 0.03);
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+
+.product-card:hover {
+  border-color: #8aaa96;
+  box-shadow: 0 7px 18px rgba(52, 64, 57, 0.08);
+}
+
+.trend,
+.badge {
+  border-radius: 7px;
+}
+
+.toolbar {
+  box-shadow: none;
+}
+
+th {
+  background: #f0eee7;
+  color: #68716b;
+  letter-spacing: 0.04em;
+}
+
+.cart {
+  border-top: 4px solid #f3b763;
+}
+
+tbody tr:hover {
+  background: color-mix(in srgb, var(--panel) 70%, var(--green-soft));
+}
+
+.product-card {
+  background: color-mix(in srgb, var(--panel) 88%, var(--paper));
+}
+
+.toolbar {
+  background: color-mix(in srgb, var(--panel) 86%, var(--paper));
+}
+
+.secondary,
+.quantity button,
+dialog {
+  background: var(--panel);
+  color: var(--ink);
+}
+
+dialog::backdrop {
+  background: rgba(40, 47, 43, 0.48);
+}
+
+@media (max-width: 720px) {
+  .sidebar {
+    background: #fffefa;
+    border-top: 1px solid var(--line);
+  }
+
+  .nav-item.active {
+    color: #27563d;
+  }
+}

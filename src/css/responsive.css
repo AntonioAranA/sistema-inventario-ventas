@@ -1,0 +1,49 @@
+@media (max-width: 1000px) {
+  .metrics { grid-template-columns: 1fr 1fr; }
+  .dashboard-grid, .sale-layout { grid-template-columns: 1fr; }
+  .purchases-layout { grid-template-columns: 1fr; }
+  .cart { position: static; }
+  .product-grid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 720px) {
+  .app-shell { display: block; }
+  .sidebar { position: fixed; inset: auto 0 0; z-index: 4; width: auto; height: 66px; padding: 8px; background: var(--ink); }
+  .brand, .sidebar-note { display: none; }
+  .sidebar nav { grid-template-columns: repeat(auto-fit,minmax(42px,1fr)); gap: 2px; }
+  .nav-item { padding: 7px 3px; font-size: 10px; text-align: center; }
+  .nav-item span { display: block; width: auto; font-size: 17px; }
+  main { padding: 0 16px 90px; }
+  .topbar { height: 82px; margin-bottom: 28px; }
+  .topbar h1 { font-size: 21px; }
+  .header-actions > span { display: none; }
+  .header-actions .primary { padding: 11px; font-size: 0; }
+  .header-actions .primary::after { content: "+ Venta"; font-size: 12px; }
+  .metrics { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .metric { padding: 16px; }
+  .metric strong { font-size: 21px; }
+  .dashboard-grid { display: block; }
+  .dashboard-grid .panel { margin-bottom: 14px; }
+  .section-heading { align-items: center; }
+  .section-heading h2 { font-size: 25px; }
+  .toolbar { display: block; }
+  .toolbar select { width: 100%; margin-top: 8px; }
+  .table-wrap { overflow-x: auto; }
+  .product-grid, .form-grid { grid-template-columns: 1fr; }
+  .span-2 { grid-column: auto; }
+  .sale-row { grid-template-columns: 1fr auto; }
+  .sale-row > div:nth-child(2) { display: none; }
+  .purchase-summary { grid-template-columns: 1fr; }
+  .purchase-line { grid-template-columns: 1fr 1fr; }
+  .purchase-line label:first-child { grid-column: 1 / -1; }
+  .heading-actions { flex-direction: column; }
+  .user-menu {
+    display: block;
+    max-width: 95px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .header-actions { gap: 8px; }
+}
