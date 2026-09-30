@@ -1,9 +1,11 @@
 """Regresiones de la API. Cada prueba usa SQLite y un puerto temporales."""
 import http.cookiejar
 import json
+import sqlite3
 import tempfile
 import threading
 import unittest
+from copy import deepcopy
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
@@ -188,6 +190,112 @@ class ApiTests(unittest.TestCase):
             db.execute("DELETE FROM products")
         server.initialize_database()
         self.assertEqual(server.get_state()["products"], [])
+
+    def backup_fixture(self):
+        product = self.product()
+        _, supplier = self.call("/api/suppliers", {"name": "Proveedor"})
+        self.call("/api/purchases", {"supplierId": supplier["id"], "items": [
+            {"productId": product["id"], "quantity": 5, "unitCost": 50},
+        ]})
+        self.call("/api/sales", {"items": [{"id": product["id"], "quantity": 2}]})
+        status, backup = self.call("/api/backup")
+        self.assertEqual(status, 200)
+        return backup
+
+    def test_backup_roundtrip_and_account_preservation(self):
+        backup = self.backup_fixture()
+        account = self.call("/api/auth/status")[1]["user"]
+        self.assertEqual(backup["version"], 1)
+        self.assertNotIn("users", backup)
+        expected = server.get_state()
+        self.call("/api/products", {"name": "Temporal", "sku": "TEMP", "category": "Test", "price": 1, "min": 0})
+        self.assertEqual(self.call("/api/backup/restore", backup)[0], 200)
+        snapshots = list((server.DB_PATH.parent / "backups").glob("inventory-before-restore-*.db"))
+        self.assertEqual(len(snapshots), 1)
+        snapshot = sqlite3.connect(snapshots[0])
+        try:
+            self.assertEqual(snapshot.execute("SELECT sku FROM products WHERE sku='TEMP'").fetchone(), ("TEMP",))
+        finally:
+            snapshot.close()
+        self.assertEqual(server.get_state(), expected)
+        self.assertEqual(self.call("/api/auth/status")[1]["user"], account)
+        legacy = {key: value for key, value in backup.items() if key not in ("format", "version")}
+        self.assertEqual(self.call("/api/backup/restore", legacy)[0], 200)
+
+    def test_snapshot_retention_keeps_only_ten_recent_files(self):
+        folder = server.DB_PATH.parent / "backups"
+        folder.mkdir()
+        for index in range(10):
+            (folder / f"inventory-before-restore-20200101T000000-{index:04d}.db").write_bytes(b"old")
+        latest = server.snapshot_database()
+        snapshots = list(folder.glob("inventory-before-restore-*.db"))
+        self.assertEqual(len(snapshots), 10)
+        self.assertIn(latest, snapshots)
+
+    def test_invalid_backups_preserve_all_existing_records(self):
+        backup = self.backup_fixture()
+        expected = server.get_state()
+        invalid = []
+        for key in ("products", "suppliers", "sales", "purchases", "movements"):
+            missing = deepcopy(backup)
+            del missing[key]
+            invalid.append(missing)
+            malformed = deepcopy(backup)
+            malformed[key] = [None]
+            invalid.append(malformed)
+        for field, value in (("quantity", True), ("quantity", 1.9), ("date", "ayer"), ("saleId", [])):
+            modified = deepcopy(backup)
+            modified["movements"][0][field] = value
+            invalid.append(modified)
+        for key, field, value in (
+            ("sales", "total", 999), ("purchases", "supplierId", "missing"),
+            ("products", "stock", 999), ("products", "name", ""), ("products", "price", True),
+        ):
+            modified = deepcopy(backup)
+            modified[key][0][field] = value
+            invalid.append(modified)
+        duplicate = deepcopy(backup)
+        duplicate["products"].append(duplicate["products"][0])
+        invalid.append(duplicate)
+        for candidate in invalid:
+            with self.subTest(candidate=candidate):
+                status, result = self.call("/api/backup/restore", candidate)
+                self.assertEqual(status, 400)
+                self.assertIn("error", result)
+                self.assertEqual(server.get_state(), expected)
+
+    def test_restore_rolls_back_when_database_rejects_an_insert(self):
+        backup = self.backup_fixture()
+        expected = server.get_state()
+        with server.connect() as db:
+            db.execute("CREATE TRIGGER reject_sale BEFORE INSERT ON sales BEGIN SELECT RAISE(ABORT, 'test'); END")
+        self.assertEqual(self.call("/api/backup/restore", backup)[0], 400)
+        self.assertEqual(server.get_state(), expected)
+
+    def test_backup_endpoints_are_admin_only(self):
+        for role in ("seller", "inventory"):
+            self.call("/api/users", {"name": role, "username": role, "password": "test-password", "role": role})
+            client = self.new_client()
+            self.call("/api/auth/login", {"username": role, "password": "test-password"}, client=client)
+            self.assertEqual(self.call("/api/backup", client=client)[0], 403)
+            self.assertEqual(self.call("/api/backup/restore", {}, client=client)[0], 403)
+        self.assertEqual(self.call("/api/backup", client=self.new_client())[0], 401)
+
+    def test_empty_backup_and_sales_with_nonsequential_folios(self):
+        backup = self.backup_fixture()
+        backup["sales"][0]["folio"] = "V-0002"
+        backup["purchases"][0]["folio"] = "C-0002"
+        self.assertEqual(self.call("/api/backup/restore", backup)[0], 200)
+        product_id = backup["sales"][0]["items"][0]["id"]
+        self.assertEqual(self.call("/api/sales", {"items": [{"id": product_id, "quantity": 1}]})[0], 201)
+        self.assertEqual(self.call("/api/purchases", {"supplierId": backup["suppliers"][0]["id"], "items": [
+            {"productId": product_id, "quantity": 1, "unitCost": 50},
+        ]})[0], 201)
+        for key in ("products", "suppliers", "sales", "purchases", "movements"):
+            backup[key] = []
+        self.assertEqual(self.call("/api/backup/restore", backup)[0], 200)
+        server.initialize_database()
+        self.assertTrue(all(not values for values in server.get_state().values()))
 
 
 if __name__ == "__main__":

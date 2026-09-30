@@ -4,6 +4,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from functools import wraps
 from urllib.parse import unquote, urlparse
+from backup_validation import validate_backup
 
 ROOT = Path(__file__).resolve().parent
 DB_PATH = Path(os.environ.get("INVENTORY_DB", ROOT / "data" / "inventory.db"))
@@ -22,7 +23,43 @@ def connect():
     db.execute("PRAGMA foreign_keys=ON")
     return db
 
+def snapshot_database():
+    """Save a consistent SQLite snapshot before replacing business data."""
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    snapshot_dir = DB_PATH.parent / "backups"
+    snapshot_dir.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    target = snapshot_dir / f"inventory-before-restore-{stamp}-{uuid.uuid4().hex[:8]}.db"
+    try:
+        destination = sqlite3.connect(target)
+        try:
+            with connect() as source:
+                source.backup(destination)
+        finally:
+            destination.close()
+    except Exception:
+        target.unlink(missing_ok=True)
+        raise
+    cutoff = datetime.now(timezone.utc).timestamp() - 90 * 86400
+    snapshots = sorted(snapshot_dir.glob("inventory-before-restore-*.db"), reverse=True)
+    for index, snapshot in enumerate(snapshots):
+        try:
+            if snapshot.stat().st_mtime < cutoff or index >= 10:
+                snapshot.unlink()
+        except OSError:
+            pass
+    return target
+
 def now(): return datetime.now(timezone.utc).isoformat()
+
+def next_sequence(db, table, prefix):
+    # Restored histories can have gaps or externally assigned folios.
+    if table not in ("sales", "purchases"):
+        raise ValueError("Tabla inválida")
+    sequence = db.execute(f"SELECT COUNT(*)+1 FROM {table}").fetchone()[0]
+    while db.execute(f"SELECT 1 FROM {table} WHERE folio=?", (f"{prefix}-{sequence:04d}",)).fetchone():
+        sequence += 1
+    return sequence
 
 def hash_password(password,salt):
     return hashlib.pbkdf2_hmac("sha256",password.encode(),bytes.fromhex(salt),210000).hex()
@@ -164,6 +201,9 @@ class Handler(BaseHTTPRequestHandler):
 
     @api_errors
     def do_GET(self):
+        if self.path == "/api/backup":
+            if not self.require_role("admin"): return
+            return self.json({"format": "almacen-backup", "version": 1, "exportedAt": now(), **get_state()})
         if self.path == "/api/auth/status":
             user=self.current_user(); return self.json({"authenticated":bool(user),"needsSetup":self.user_count()==0,"user":user})
         if self.path == "/api/users":
@@ -256,7 +296,7 @@ class Handler(BaseHTTPRequestHandler):
                     if not product or quantity<1 or product["stock"]<quantity:
                         raise ValueError(f"Stock insuficiente para {entry.get('name','el producto')}")
                     items.append({"id":product["id"],"name":product["name"],"price":product["price"],"quantity":quantity})
-                sequence=db.execute("SELECT COUNT(*)+1 FROM sales").fetchone()[0]
+                sequence=next_sequence(db, "sales", "V")
                 sale={"id":str(uuid.uuid4()),"folio":f"V-{sequence:04d}","date":now(),
                       "customer":str(data.get("customer","")).strip(),"items":items}
                 sale["total"]=sum(i["price"]*i["quantity"] for i in items)
@@ -318,7 +358,7 @@ class Handler(BaseHTTPRequestHandler):
                     cost=integer(entry.get("unitCost"), "Costo unitario")
                     if not product or quantity<1 or cost<0: raise ValueError("Revisa los productos de la compra")
                     items.append({"productId":product["id"],"productName":product["name"],"quantity":quantity,"unitCost":cost})
-                sequence=db.execute("SELECT COUNT(*)+1 FROM purchases").fetchone()[0]; timestamp=now()
+                sequence=next_sequence(db, "purchases", "C"); timestamp=now()
                 purchase={"id":str(uuid.uuid4()),"folio":f"C-{sequence:04d}","supplierId":supplier["id"],
                   "supplierName":supplier["name"],"document":str(data.get("document","")).strip(),
                   "responsible":responsible,"notes":str(data.get("notes","")).strip(),"items":items,"date":timestamp}
@@ -398,15 +438,11 @@ class Handler(BaseHTTPRequestHandler):
         except ValueError as error: self.json({"error":str(error)},400)
 
     def restore_backup(self):
-        data = self.body()
-        products, suppliers = data.get("products", []), data.get("suppliers", [])
-        sales, movements, purchases = data.get("sales", []), data.get("movements", []), data.get("purchases", [])
-        collections = ((products, "productos"), (suppliers, "proveedores"), (sales, "ventas"), (movements, "movimientos"), (purchases, "compras"))
-        if any(not isinstance(items, list) or len(items) > 100_000 for items, _ in collections):
-            raise ValueError("El respaldo contiene listas inválidas")
-        if not products:
-            raise ValueError("El respaldo debe contener al menos un producto")
         try:
+            data = validate_backup(self.body())
+            products, suppliers = data["products"], data["suppliers"]
+            sales, movements, purchases = data["sales"], data["movements"], data["purchases"]
+            snapshot_database()
             with connect() as db:
                 db.execute("BEGIN IMMEDIATE")
                 for table in ("sale_items", "sales", "purchase_items", "purchases", "inventory_movements", "products", "suppliers"):
@@ -414,20 +450,22 @@ class Handler(BaseHTTPRequestHandler):
                 for item in suppliers:
                     db.execute("INSERT INTO suppliers(id,name,tax_id,phone,email,created_at) VALUES(?,?,?,?,?,?)", (str(item["id"]), str(item.get("name", "")).strip(), str(item.get("taxId", "")), str(item.get("phone", "")), str(item.get("email", "")), str(item.get("createdAt") or now())))
                 for item in products:
-                    db.execute("INSERT INTO products(id,name,sku,category,price,stock,min_stock,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)", (str(item["id"]), str(item["name"]).strip(), str(item["sku"]).strip(), str(item.get("category", "")).strip(), integer(item["price"], "Precio"), integer(item["stock"], "Stock"), integer(item.get("min", 0), "Stock mínimo"), str(item.get("createdAt") or now()), str(item.get("updatedAt") or now())))
+                    db.execute("INSERT INTO products(id,name,sku,category,price,stock,min_stock,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)", (str(item["id"]), str(item["name"]).strip(), str(item["sku"]).strip(), str(item.get("category", "")).strip(), item["price"], item["stock"], item["min"], str(item.get("createdAt") or now()), str(item.get("updatedAt") or now())))
                 for sale in sales:
-                    db.execute("INSERT INTO sales(id,folio,customer,total,created_at) VALUES(?,?,?,?,?)", (str(sale["id"]), str(sale["folio"]), str(sale.get("customer", "")), integer(sale["total"], "Total"), str(sale.get("date") or now())))
+                    db.execute("INSERT INTO sales(id,folio,customer,total,created_at) VALUES(?,?,?,?,?)", (str(sale["id"]), str(sale["folio"]), str(sale.get("customer", "")), sale["total"], str(sale.get("date") or now())))
                     for item in line_items({"items": sale.get("items", [])}):
-                        db.execute("INSERT INTO sale_items(sale_id,product_id,product_name,price,quantity) VALUES(?,?,?,?,?)", (str(sale["id"]), str(item["id"]), str(item["name"]), integer(item["price"], "Precio"), integer(item["quantity"], "Cantidad", 1)))
+                        db.execute("INSERT INTO sale_items(sale_id,product_id,product_name,price,quantity) VALUES(?,?,?,?,?)", (str(sale["id"]), str(item["id"]), str(item["name"]), item["price"], item["quantity"]))
                 for movement in movements:
                     db.execute("INSERT INTO inventory_movements(id,product_id,product_name,movement_type,quantity,reason,responsible,sale_id,created_at) VALUES(?,?,?,?,?,?,?,?,?)", (str(movement["id"]), str(movement["productId"]), str(movement["productName"]), str(movement["type"]), int(movement["quantity"]), str(movement.get("reason", "")), str(movement.get("responsible", "")), movement.get("saleId"), str(movement.get("date") or now())))
                 for purchase in purchases:
-                    db.execute("INSERT INTO purchases(id,folio,supplier_id,supplier_name,document,responsible,notes,total,created_at) VALUES(?,?,?,?,?,?,?,?,?)", (str(purchase["id"]), str(purchase["folio"]), str(purchase["supplierId"]), str(purchase["supplierName"]), str(purchase.get("document", "")), str(purchase.get("responsible", "")), str(purchase.get("notes", "")), integer(purchase["total"], "Total"), str(purchase.get("date") or now())))
+                    db.execute("INSERT INTO purchases(id,folio,supplier_id,supplier_name,document,responsible,notes,total,created_at) VALUES(?,?,?,?,?,?,?,?,?)", (str(purchase["id"]), str(purchase["folio"]), str(purchase["supplierId"]), str(purchase["supplierName"]), str(purchase.get("document", "")), str(purchase.get("responsible", "")), str(purchase.get("notes", "")), purchase["total"], str(purchase.get("date") or now())))
                     for item in line_items({"items": purchase.get("items", [])}):
-                        db.execute("INSERT INTO purchase_items(purchase_id,product_id,product_name,unit_cost,quantity) VALUES(?,?,?,?,?)", (str(purchase["id"]), str(item["productId"]), str(item["productName"]), integer(item["unitCost"], "Costo unitario"), integer(item["quantity"], "Cantidad", 1)))
+                        db.execute("INSERT INTO purchase_items(purchase_id,product_id,product_name,unit_cost,quantity) VALUES(?,?,?,?,?)", (str(purchase["id"]), str(item["productId"]), str(item["productName"]), item["unitCost"], item["quantity"]))
             self.json({"restored": True})
         except (KeyError, TypeError, ValueError) as error:
-            raise ValueError(f"Respaldo inválido: {error}")
+            self.json({"error": f"Respaldo inválido: {error}"}, 400)
+        except sqlite3.IntegrityError:
+            self.json({"error": "El respaldo contiene datos incompatibles. No se modificó la información actual."}, 400)
 
     def create_user(self,data,role,initial=False):
         name=str(data.get("name","")).strip(); username=str(data.get("username","")).strip(); password=str(data.get("password",""))
@@ -482,7 +520,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def body(self):
         length=int(self.headers.get("Content-Length",0))
-        if length<1 or length>20_000_000: raise ValueError("Tamaño de solicitud inválido")
+        limit = 20_000_000 if self.path == "/api/backup/restore" else 1_000_000
+        if length<1 or length>limit: raise ValueError("Tamaño de solicitud inválido")
         try:
             data=json.loads(self.rfile.read(length).decode("utf-8"))
             if not isinstance(data,dict): raise ValueError("Se esperaba un objeto JSON")
