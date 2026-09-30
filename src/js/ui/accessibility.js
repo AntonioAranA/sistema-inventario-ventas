@@ -1,3 +1,4 @@
+import { icon } from "./icons.js";
 const STORAGE_KEY = "almacen-accessibility-v1";
 
 const controls = {
@@ -110,7 +111,7 @@ function syncThemeButton() {
   const button = document.querySelector("#theme-toggle");
   if (!button) return;
   button.setAttribute("aria-pressed", String(Boolean(preferences.dark)));
-  button.querySelector(".theme-toggle-icon").textContent = preferences.dark ? "☀️" : "🌙";
+  button.querySelector(".theme-toggle-icon").innerHTML = icon(preferences.dark ? "sun" : "moon");
   button.querySelector("strong").textContent = preferences.dark ? "Modo claro" : "Modo oscuro";
   button.querySelector("small").textContent = preferences.dark
     ? "Cambiar a fondo claro"

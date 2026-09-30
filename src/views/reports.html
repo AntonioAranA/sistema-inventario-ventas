@@ -19,7 +19,7 @@
           </div>
           <div class="toolbar panel report-toolbar">
             <label>Periodo<select id="report-period"><option value="7">Últimos 7 días</option><option value="30" selected>Últimos 30 días</option><option value="all">Todo el historial</option></select></label>
-            <button class="secondary" id="export-all">
+            <button class="secondary admin-only" id="export-all">
               Descargar respaldo JSON
             </button>
             <button class="secondary admin-only" id="import-backup">
@@ -29,6 +29,12 @@
           </div>
           <div class="metrics" id="report-metrics">
           </div>
+          <p class="muted" id="profit-note" hidden>
+            Estimación según la última compra anterior a cada venta. Si una compra incluye varios costos del mismo producto, se usa su promedio por cantidad. No incluye gastos ni ajustes por devoluciones.
+          </p>
+          <p class="muted admin-only">
+            El respaldo incluye los datos del negocio. Las cuentas de usuario, contraseñas y preferencias se conservan al restaurar.
+          </p>
           <div class="report-grid">
             <article class="panel table-wrap">
               <div class="subsection-heading">

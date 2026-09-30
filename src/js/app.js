@@ -1,10 +1,13 @@
+import { csvRows, parseBackup } from "./utils/exports.js";
+import { inventoryCostLookup } from "./utils/reports.js";
+import { icon } from "./ui/icons.js";
 import { VALID_VIEWS, VIEW_TITLES } from "./config.js";
-import { deleteProduct, deleteSupplier, getState, getUsers, initializeStore, registerMovement, registerPurchase, registerSale, restoreBackup, saveProduct, saveSupplier, saveUser } from "./data/store.js";
+import { deleteProduct, deleteSupplier, getBackup, getState, getUsers, initializeStore, registerMovement, registerPurchase, registerSale, restoreBackup, saveProduct, saveSupplier, saveUser } from "./data/store.js";
 import { escapeHtml, formatDate, money } from "./utils/formatters.js";
 import { changePassword, getCurrentUser, initializeAuth, logout } from "./auth.js";
 import { showToast } from "./ui/notifications.js";
 import { initializeAccessibility } from "./ui/accessibility.js";
-import { loadComponents, loadViews } from "./ui/views.js";
+import { loadComponents, loadViews, showStartupError } from "./ui/views.js";
 import { renderAll, renderCart, renderMovements, renderProducts, renderReports, renderSaleProducts } from "./ui/renderers.js";
 
 let cart = [];
@@ -16,7 +19,7 @@ const element = (selector) => document.querySelector(selector);
 const refresh = () => renderAll(getState(), cart);
 
 function downloadFile(filename, content, type = "text/csv;charset=utf-8") {
-  const blob = new Blob(["\uFEFF", content], { type });
+  const blob = new Blob([type.startsWith("text/csv") ? "\uFEFF" : "", content], { type });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -27,26 +30,19 @@ function downloadFile(filename, content, type = "text/csv;charset=utf-8") {
   setTimeout(() => { link.remove(); URL.revokeObjectURL(url); }, 1000);
 }
 
-function csvCell(value) {
-  return `"${String(value ?? "").replaceAll('"', '""')}"`;
-}
-
-function csvRows(rows) {
-  // El punto y coma funciona mejor con Excel configurado en español.
-  return rows.map((row) => row.map(csvCell).join(";")).join("\r\n");
-}
-
 function exportSales() {
   const period = element("#report-period").value;
   const limit = period === "all" ? null : new Date(Date.now() - Number(period) * 86400000);
   const state = getState();
-  const costs = new Map();
-  (state.purchases || []).flatMap((purchase) => purchase.items.map((item) => ({ ...item, date: purchase.date }))).sort((a, b) => new Date(b.date) - new Date(a.date)).forEach((item) => { if (!costs.has(item.productId)) costs.set(item.productId, item.unitCost); });
-  const rows = [["Folio", "Fecha", "Cliente", "Producto", "SKU", "Cantidad", "Precio unitario", "Costo unitario", "Subtotal", "Ganancia estimada"]];
+  const canViewCosts = currentUser.role !== "seller";
+  const costFor = inventoryCostLookup(state);
+  const rows = [["Folio", "Fecha", "Cliente", "Producto", "SKU", "Cantidad", "Precio unitario", "Subtotal", ...(canViewCosts ? ["Costo unitario estimado", "Ganancia estimada"] : [])]];
   [...state.sales].filter((sale) => !limit || new Date(sale.date) >= limit).sort((a, b) => new Date(a.date) - new Date(b.date)).forEach((sale) => sale.items.forEach((item) => {
     const product = state.products.find(({ id }) => id === item.id || id === item.productId);
-    const cost = costs.get(item.id) || 0;
-    rows.push([sale.folio, formatDate(sale.date, true), sale.customer || "Venta mostrador", item.name, product?.sku || "", item.quantity, item.price, cost, item.price * item.quantity, (item.price - cost) * item.quantity]);
+    const cost = costFor(item.id, sale.date, sale.id);
+    const row = [sale.folio, formatDate(sale.date, true), sale.customer || "Venta mostrador", item.name, product?.sku || "", item.quantity, item.price, item.price * item.quantity];
+    if (canViewCosts) row.push(cost === null ? "Sin costo" : Math.round(cost), cost === null ? "Sin costo" : Math.round((item.price - cost) * item.quantity));
+    rows.push(row);
   }));
   downloadFile(`ventas-${new Date().toISOString().slice(0, 10)}.csv`, csvRows(rows));
   showToast("Reporte de ventas descargado");
@@ -59,24 +55,48 @@ function exportInventory() {
   showToast("Reporte de inventario descargado");
 }
 
-function exportBackup() {
-  downloadFile(`respaldo-inventario-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify({ exportedAt: new Date().toISOString(), ...getState() }, null, 2), "application/json;charset=utf-8");
-  showToast("Respaldo descargado");
+async function exportBackup() {
+  const button = element("#export-all");
+  if (button.disabled) return;
+  button.disabled = true;
+  try {
+    const backup = await getBackup();
+    downloadFile(`respaldo-inventario-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(backup, null, 2), "application/json;charset=utf-8");
+    showToast("Respaldo descargado");
+  } catch (error) { showToast(error.message); }
+  finally { button.disabled = false; }
 }
 
 async function importBackup(event) {
   const file = event.target.files?.[0];
   event.target.value = "";
-  if (!file) return;
+  const button = element("#import-backup");
+  if (!file || button.disabled) return;
   if (file.size > 20_000_000) return showToast("El respaldo supera el límite de 20 MB");
-  if (!confirm("Restaurar este respaldo reemplazará productos, ventas, compras y movimientos actuales. ¿Continuar?")) return;
+  button.disabled = true;
+  button.setAttribute("aria-busy", "true");
   try {
-    const backup = JSON.parse(await file.text());
+    const backup = parseBackup(await file.text());
+    const detail = `${backup.products.length} productos, ${backup.sales.length} ventas y ${backup.purchases.length} compras`;
+    if (!confirm(`Se restaurarán ${detail}. Se reemplazarán los datos actuales del negocio; se conservarán las cuentas de usuario. ¿Continuar?`)) return;
     await restoreBackup(backup);
     cart = [];
-    refresh();
-    showToast("Respaldo restaurado correctamente");
-  } catch (error) { showToast(error.message || "El archivo no es un respaldo válido"); }
+    purchaseItems = [];
+    element("#customer-name").value = "";
+    try {
+      await initializeStore();
+      refresh();
+      showToast("Respaldo restaurado correctamente");
+    } catch {
+      // The replacement already succeeded; reload instead of suggesting a retry.
+      location.reload();
+    }
+  } catch (error) {
+    showToast(error instanceof SyntaxError ? "El archivo no contiene JSON válido." : error.message);
+  } finally {
+    button.disabled = false;
+    button.removeAttribute("aria-busy");
+  }
 }
 
 function navigate(view) {
@@ -160,7 +180,7 @@ function addPurchaseItem() {
 }
 
 function renderPurchaseDraft() {
-  element("#purchase-items").innerHTML = purchaseItems.length ? purchaseItems.map((item, index) => `<div class="purchase-item"><div><strong>${escapeHtml(item.productName)}</strong><small>${item.quantity} × ${money.format(item.unitCost)}</small></div><strong>${money.format(item.quantity * item.unitCost)}</strong><button type="button" class="icon-button remove-purchase-item" data-index="${index}">×</button></div>`).join("") : '<div class="cart-empty">Agrega los productos recibidos.</div>';
+  element("#purchase-items").innerHTML = purchaseItems.length ? purchaseItems.map((item, index) => `<div class="purchase-item"><div><strong>${escapeHtml(item.productName)}</strong><small>${item.quantity} × ${money.format(item.unitCost)}</small></div><strong>${money.format(item.quantity * item.unitCost)}</strong><button type="button" class="icon-button remove-purchase-item" data-index="${index}" aria-label="Quitar producto">${icon("x")}</button></div>`).join("") : '<div class="cart-empty">Agrega los productos recibidos.</div>';
   element("#purchase-total").textContent = money.format(purchaseItems.reduce((sum, item) => sum + item.quantity * item.unitCost, 0));
 }
 
@@ -465,15 +485,7 @@ async function startApp() {
     bindEvents();
     navigate(location.hash.slice(1));
   } catch (error) {
-    element("#auth-screen").classList.remove("hidden");
-    element("#auth-title").textContent = "No se pudo cargar el sistema";
-    element("#auth-error").textContent = error.message;
-    const retry = document.createElement("button");
-    retry.type = "button";
-    retry.className = "primary wide";
-    retry.textContent = "Reintentar";
-    retry.addEventListener("click", () => location.reload());
-    element("#auth-form").replaceChildren(element("#auth-title"), element("#auth-error"), retry);
+    showStartupError(error);
   }
 }
 

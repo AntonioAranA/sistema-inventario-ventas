@@ -1,3 +1,6 @@
+import { getCurrentUser } from "../auth.js";
+import { inventoryCostLookup, summarizeProfit } from "../utils/reports.js";
+import { icon } from "./icons.js";
 import { escapeHtml, formatDate, initials, money } from "../utils/formatters.js";
 
 const element = (selector) => document.querySelector(selector);
@@ -21,10 +24,10 @@ export function renderDashboard(state) {
   const inventoryValue = state.products.reduce((sum, product) => sum + product.stock * product.price, 0);
   const todayTotal = todaySales.reduce((sum, sale) => sum + sale.total, 0);
   const metrics = [
-    ["Ventas de hoy", money.format(todayTotal), `${todaySales.length} ventas realizadas`, "💰"],
-    ["Productos", state.products.length, `${stockUnits} unidades disponibles`, "📦"],
-    ["Por reponer", lowStock.length, lowStock.length ? "Conviene revisarlos" : "Todo está bien", "📋"],
-    ["Valor del inventario", money.format(inventoryValue), "Según precio de venta", "🏷️"],
+    ["Ventas de hoy", money.format(todayTotal), `${todaySales.length} ventas realizadas`, "banknote"],
+    ["Productos", state.products.length, `${stockUnits} unidades disponibles`, "package"],
+    ["Por reponer", lowStock.length, lowStock.length ? "Conviene revisarlos" : "Todo está bien", "clipboard-list"],
+    ["Valor del inventario", money.format(inventoryValue), "Según precio de venta", "tags"],
   ];
 
   element("#metrics").innerHTML = metrics.map(metricTemplate).join("");
@@ -32,7 +35,7 @@ export function renderDashboard(state) {
   if (alert) {
     alert.hidden = lowStock.length === 0;
     alert.innerHTML = lowStock.length
-      ? `<strong>⚠️ ${lowStock.length} ${lowStock.length === 1 ? "producto necesita" : "productos necesitan"} reposición</strong><span>${lowStock.slice(0, 3).map((product) => `${escapeHtml(product.name)} (${product.stock} uds.)`).join(" · ")}${lowStock.length > 3 ? " · …" : ""}</span><button class="text-button" data-go="inventory">Revisar inventario →</button>`
+      ? `<strong>${icon("triangle-alert")} ${lowStock.length} ${lowStock.length === 1 ? "producto necesita" : "productos necesitan"} reposición</strong><span>${lowStock.slice(0, 3).map((product) => `${escapeHtml(product.name)} (${product.stock} uds.)`).join(" · ")}${lowStock.length > 3 ? " · …" : ""}</span><button class="text-button" data-go="inventory">Revisar inventario ${icon("arrow-right")}</button>`
       : "";
   }
   element("#low-stock-list").innerHTML = lowStock.length
@@ -89,24 +92,17 @@ export function renderReports(state) {
   const revenue = sales.reduce((sum, sale) => sum + sale.total, 0);
   const units = sales.reduce((sum, sale) => sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
   const average = sales.length ? Math.round(revenue / sales.length) : 0;
-  const costs = new Map();
-  (state.purchases || []).flatMap((purchase) => purchase.items.map((item) => ({ ...item, date: purchase.date }))).sort((a, b) => new Date(b.date) - new Date(a.date)).forEach((item) => {
-    if (!costs.has(item.productId)) costs.set(item.productId, item.unitCost);
-  });
-  const estimatedProfit = sales.reduce((sum, sale) => sum + sale.items.reduce((itemSum, item) => itemSum + (item.price - (costs.get(item.id) || 0)) * item.quantity, 0), 0);
+  const canViewCosts = getCurrentUser()?.role !== "seller";
+  const profit = summarizeProfit(sales, inventoryCostLookup(state));
   const lowStock = state.products.filter((product) => product.stock <= product.min);
-  const metrics = [["Ventas", sales.length, "Transacciones", "🧾"], ["Ingresos", money.format(revenue), "Total vendido", "💰"], ["Ganancia estimada", money.format(estimatedProfit), "Según costos registrados", "📈"], ["Ticket promedio", money.format(average), `${units} unidades vendidas`, "📦"]];
+  const metrics = [["Ventas", sales.length, "Transacciones", "receipt"], ["Ingresos", money.format(revenue), "Total vendido", "banknote"], canViewCosts ? [profit.missingUnits ? "Ganancia parcial estimada" : "Ganancia estimada", profit.knownUnits || !units ? money.format(profit.profit) : "Sin costo", profit.missingUnits ? `${profit.missingUnits} unidades sin costo registrado` : "Según compras anteriores a la venta", "trending-up"] : ["Unidades", units, "Productos vendidos", "package"], ["Ticket promedio", money.format(average), `${units} unidades vendidas`, "package"]];
   element("#report-metrics").innerHTML = metrics.map(metricTemplate).join("");
-  const top = new Map();
-  sales.forEach((sale) => sale.items.forEach((item) => {
-    const current = top.get(item.name) || { name: item.name, quantity: 0, revenue: 0, profit: 0 };
-    current.quantity += item.quantity;
-    current.revenue += item.price * item.quantity;
-    current.profit += (item.price - (costs.get(item.id) || 0)) * item.quantity;
-    top.set(item.name, current);
-  }));
-  const products = [...top.values()].sort((a, b) => b.quantity - a.quantity).slice(0, 10);
-  element("#top-products-table").innerHTML = products.map((item) => `<tr><td><strong>${escapeHtml(item.name)}</strong></td><td>${item.quantity}</td><td><strong>${money.format(item.revenue)}</strong><small>Ganancia: ${money.format(item.profit)}</small></td></tr>`).join("");
+  element("#profit-note").hidden = !canViewCosts;
+  const products = profit.products.slice(0, 10);
+  element("#top-products-table").innerHTML = products.map((item) => {
+    const detail = !item.knownUnits ? "Sin costo registrado" : `Ganancia estimada${item.missingUnits ? " parcial" : ""}: ${money.format(item.profit)}`;
+    return `<tr><td><strong>${escapeHtml(item.name)}</strong></td><td>${item.quantity}</td><td><strong>${money.format(item.revenue)}</strong>${canViewCosts ? `<small>${detail}</small>` : ""}</td></tr>`;
+  }).join("");
   element("#top-products-empty").classList.toggle("hidden", products.length > 0);
   element("#report-stock-table").innerHTML = lowStock.sort((a, b) => (a.stock - a.min) - (b.stock - b.min)).map((product) => `<tr><td><strong>${escapeHtml(product.name)}</strong><small>${escapeHtml(product.sku)}</small></td><td><span class="stock-number">${product.stock}</span></td><td>${product.min}</td></tr>`).join("");
   element("#report-stock-empty").classList.toggle("hidden", lowStock.length > 0);
@@ -128,16 +124,16 @@ export function renderMovements(movements) {
 export function renderPurchases(purchases, suppliers) {
   const total = purchases.reduce((sum, purchase) => sum + purchase.total, 0);
   const units = purchases.reduce((sum, purchase) => sum + purchase.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
-  const cards = [["Compras registradas", purchases.length, "Recepciones totales", "🚚"], ["Unidades recibidas", units, "Productos ingresados", "📦"], ["Monto comprado", money.format(total), "Costo acumulado", "💳"]];
+  const cards = [["Compras registradas", purchases.length, "Recepciones totales", "truck"], ["Unidades recibidas", units, "Productos ingresados", "package"], ["Monto comprado", money.format(total), "Costo acumulado", "credit-card"]];
   element("#purchase-summary").innerHTML = cards.map(metricTemplate).join("");
   const query = element("#purchase-search").value.toLowerCase().trim();
   const days = element("#purchase-period").value;
   const limit = days === "all" ? null : new Date(Date.now() - Number(days) * 86400000);
   const visiblePurchases = purchases.filter((purchase) => {
-    const text = `${purchase.folio} ${purchase.supplierName} ${purchase.document}`.toLowerCase();
+    const text = `${escapeHtml(purchase.folio)} ${purchase.supplierName} ${purchase.document}`.toLowerCase();
     return text.includes(query) && (!limit || new Date(purchase.date) >= limit);
   });
-  element("#purchases-table").innerHTML = visiblePurchases.map((purchase) => `<tr><td><strong>${purchase.folio}</strong></td><td>${formatDate(purchase.date, true)}</td><td>${escapeHtml(purchase.supplierName)}</td><td>${escapeHtml(purchase.document || "Sin documento")}</td><td><strong>${money.format(purchase.total)}</strong><small>${purchase.items.reduce((sum,item)=>sum+item.quantity,0)} unidades</small></td><td><button class="text-button view-purchase" data-purchase-id="${escapeHtml(purchase.id)}">Ver detalle</button></td></tr>`).join("");
+  element("#purchases-table").innerHTML = visiblePurchases.map((purchase) => `<tr><td><strong>${escapeHtml(purchase.folio)}</strong></td><td>${formatDate(purchase.date, true)}</td><td>${escapeHtml(purchase.supplierName)}</td><td>${escapeHtml(purchase.document || "Sin documento")}</td><td><strong>${money.format(purchase.total)}</strong><small>${purchase.items.reduce((sum,item)=>sum+item.quantity,0)} unidades</small></td><td><button class="text-button view-purchase" data-purchase-id="${escapeHtml(purchase.id)}">Ver detalle</button></td></tr>`).join("");
   element("#purchases-empty").classList.toggle("hidden", visiblePurchases.length > 0);
 
   const supplierQuery = element("#supplier-search").value.toLowerCase().trim();
@@ -145,7 +141,7 @@ export function renderPurchases(purchases, suppliers) {
   element("#supplier-count").textContent = suppliers.length;
   element("#suppliers-list").innerHTML = visibleSuppliers.length ? visibleSuppliers.map((supplier) => {
     const purchaseCount = purchases.filter((purchase) => purchase.supplierId === supplier.id).length;
-    return `<div class="supplier-row"><span class="product-avatar">${escapeHtml(initials(supplier.name))}</span><div><strong>${escapeHtml(supplier.name)}</strong><small>${escapeHtml(supplier.phone || supplier.email || supplier.taxId || "Sin datos de contacto")} · ${purchaseCount} compras</small></div><button class="icon-button edit-supplier" data-supplier-id="${escapeHtml(supplier.id)}" title="Editar">✎</button><button class="icon-button delete-supplier" data-supplier-id="${escapeHtml(supplier.id)}" title="Eliminar">×</button></div>`;
+    return `<div class="supplier-row"><span class="product-avatar">${escapeHtml(initials(supplier.name))}</span><div><strong>${escapeHtml(supplier.name)}</strong><small>${escapeHtml(supplier.phone || supplier.email || supplier.taxId || "Sin datos de contacto")} · ${purchaseCount} compras</small></div><button class="icon-button edit-supplier" data-supplier-id="${escapeHtml(supplier.id)}" title="Editar" aria-label="Editar">${icon("pencil")}</button><button class="icon-button delete-supplier" data-supplier-id="${escapeHtml(supplier.id)}" title="Eliminar" aria-label="Eliminar">${icon("trash-2")}</button></div>`;
   }).join("") : '<div class="empty">No encontramos proveedores.</div>';
 }
 
@@ -166,31 +162,31 @@ function renderChart(sales) {
   element("#sales-chart").innerHTML = days.map((day, index) => chartBarTemplate(day, index, maximum)).join("");
 }
 
-function metricTemplate([label, value, detail, icon]) {
-  return `<article class="metric"><div class="metric-top"><span>${label}</span><span class="metric-icon">${icon}</span></div><strong>${value}</strong><small>${detail}</small></article>`;
+function metricTemplate([label, value, detail, iconName]) {
+  return `<article class="metric"><div class="metric-top"><span>${label}</span><span class="metric-icon">${icon(iconName)}</span></div><strong>${value}</strong><small>${detail}</small></article>`;
 }
 function lowStockTemplate(product) {
   return `<div class="attention-item"><span class="product-avatar">${escapeHtml(initials(product.name))}</span><div><strong>${escapeHtml(product.name)}</strong><small>${escapeHtml(product.sku)} · mínimo ${product.min}</small></div><span class="stock-number">${product.stock} uds.</span></div>`;
 }
 function recentSaleTemplate(sale) {
   const detail = sale.items.map((item) => `${item.quantity}× ${escapeHtml(item.name)}`).join(", ");
-  return `<div class="sale-row"><div><strong>${escapeHtml(sale.customer || "Venta mostrador")}</strong><small>${sale.folio}</small></div><div>${detail}</div><strong>${money.format(sale.total)}</strong></div>`;
+  return `<div class="sale-row"><div><strong>${escapeHtml(sale.customer || "Venta mostrador")}</strong><small>${escapeHtml(sale.folio)}</small></div><div>${detail}</div><strong>${money.format(sale.total)}</strong></div>`;
 }
 function productRowTemplate(product) {
   const isLow = product.stock <= product.min;
   const status = product.stock === 0 ? "Agotado" : isLow ? "Stock bajo" : "Disponible";
-  return `<tr><td><strong>${escapeHtml(product.name)}</strong></td><td>${escapeHtml(product.sku)}</td><td>${escapeHtml(product.category)}</td><td>${money.format(product.price)}</td><td><strong>${product.stock} uds.</strong><small>Mínimo ${product.min}</small></td><td><span class="badge ${isLow ? "low" : ""}">${status}</span></td><td class="row-actions"><button class="icon-button edit-product" data-id="${escapeHtml(product.id)}" title="Editar">✎</button><button class="icon-button delete-button" data-id="${escapeHtml(product.id)}" title="Eliminar">×</button></td></tr>`;
+  return `<tr><td><strong>${escapeHtml(product.name)}</strong></td><td>${escapeHtml(product.sku)}</td><td>${escapeHtml(product.category)}</td><td>${money.format(product.price)}</td><td><strong>${product.stock} uds.</strong><small>Mínimo ${product.min}</small></td><td><span class="badge ${isLow ? "low" : ""}">${status}</span></td><td class="row-actions"><button class="icon-button edit-product" data-id="${escapeHtml(product.id)}" title="Editar" aria-label="Editar">${icon("pencil")}</button><button class="icon-button delete-button" data-id="${escapeHtml(product.id)}" title="Eliminar" aria-label="Eliminar">${icon("trash-2")}</button></td></tr>`;
 }
 function saleProductTemplate(product) {
   return `<button class="product-card" data-add="${escapeHtml(product.id)}" ${product.stock === 0 ? "disabled" : ""}><strong>${escapeHtml(product.name)}</strong><small>${escapeHtml(product.category)}</small><div class="product-card-footer"><b>${money.format(product.price)}</b><span>${product.stock ? `${product.stock} disponibles` : "Agotado"}</span></div></button>`;
 }
 function cartItemTemplate(item) {
-  return `<div class="cart-item"><div><strong>${escapeHtml(item.product.name)}</strong><small>${money.format(item.product.price * item.quantity)}</small></div><div class="quantity"><button data-dec="${escapeHtml(item.id)}">−</button><b>${item.quantity}</b><button data-inc="${escapeHtml(item.id)}">＋</button></div></div>`;
+  return `<div class="cart-item"><div><strong>${escapeHtml(item.product.name)}</strong><small>${money.format(item.product.price * item.quantity)}</small></div><div class="quantity"><button data-dec="${escapeHtml(item.id)}" aria-label="Disminuir cantidad">${icon("minus")}</button><b>${item.quantity}</b><button data-inc="${escapeHtml(item.id)}" aria-label="Aumentar cantidad">${icon("plus")}</button></div></div>`;
 }
 function historyRowTemplate(sale) {
   const names = sale.items.map((item) => escapeHtml(item.name)).join(", ");
   const units = sale.items.reduce((sum, item) => sum + item.quantity, 0);
-  return `<tr><td><strong>${sale.folio}</strong></td><td>${formatDate(sale.date, true)}</td><td>${escapeHtml(sale.customer || "Venta mostrador")}</td><td>${units} uds.<small>${names}</small></td><td><strong>${money.format(sale.total)}</strong></td></tr>`;
+  return `<tr><td><strong>${escapeHtml(sale.folio)}</strong></td><td>${formatDate(sale.date, true)}</td><td>${escapeHtml(sale.customer || "Venta mostrador")}</td><td>${units} uds.<small>${names}</small></td><td><strong>${money.format(sale.total)}</strong></td></tr>`;
 }
 function movementRowTemplate(movement) {
   const labels = { initial: "Stock inicial", entry: "Entrada", purchase: "Compra", sale: "Venta", return: "Devolución", loss: "Pérdida", adjustment: "Ajuste", adjustment_in: "Ajuste", adjustment_out: "Ajuste" };

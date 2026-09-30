@@ -1,0 +1,110 @@
+/* Shared sizing for the locally bundled Lucide icons. */
+.icon {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  vertical-align: middle;
+  pointer-events: none;
+}
+
+[data-icon] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+}
+
+.nav-item span {
+  width: 20px;
+  line-height: 1;
+  filter: none;
+}
+
+.primary .icon,
+.secondary .icon,
+.text-button .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-button,
+.quantity button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 7px;
+  vertical-align: middle;
+}
+
+.icon-button {
+  color: var(--muted);
+}
+
+.icon-button:hover {
+  background: var(--green-soft);
+  color: var(--ink);
+}
+
+.icon-button .icon,
+.quantity .icon {
+  width: 17px;
+  height: 17px;
+}
+
+.delete-button:hover,
+.delete-supplier:hover {
+  color: var(--danger);
+}
+
+.stock-alert > strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.metric-icon,
+.dark-mode .metric-icon {
+  background: transparent;
+  color: var(--muted);
+}
+
+.metric::after {
+  content: none;
+}
+
+.metric-top,
+.metric small {
+  color: var(--muted);
+}
+
+.cart {
+  border-top: 1px solid var(--line);
+}
+
+@media (max-width: 720px) {
+  .sidebar nav {
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .nav-item {
+    flex: 1 0 56px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+  }
+
+  .header-actions .primary > [data-icon] {
+    display: none;
+  }
+}

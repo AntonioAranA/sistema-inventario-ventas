@@ -53,9 +53,10 @@ export async function saveUser(payload) {
 }
 
 export async function restoreBackup(payload) {
-  await request("/api/backup/restore", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-  await initializeStore();
+  return request("/api/backup/restore", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
 }
+
+export async function getBackup() { return request("/api/backup"); }
 
 async function request(url, options) {
   try {
