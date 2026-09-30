@@ -54,6 +54,25 @@ no sustituyen una comprobación visual en navegador.
 - Diseño adaptable a escritorio y teléfono.
 - Modo oscuro, contraste alto, texto ampliado y lector de pantalla integrado.
 
+## Seguridad y publicacion
+
+El servidor integrado solo escucha en `127.0.0.1` y sirve la aplicacion para uso local. No expongas directamente el puerto 8000 a Internet. Para acceso remoto, utiliza un proxy inverso mantenido que termine HTTPS, filtre trafico y limite intentos de acceso. Configura en el proceso de la aplicacion:
+
+```powershell
+$env:INVENTORY_COOKIE_SECURE = "1"
+$env:INVENTORY_PUBLIC_ORIGIN = "https://inventario.example.com"
+$env:INVENTORY_TRUST_PROXY = "1"
+python server.py
+```
+
+`INVENTORY_PUBLIC_ORIGIN` debe coincidir exactamente con el origen HTTPS publico. Activa `INVENTORY_TRUST_PROXY` solo si el proxy es de confianza, reemplaza `X-Forwarded-For` y es el unico que puede conectarse al servidor local. Asi la limitacion de intentos usa la IP del visitante en vez de la del proxy.
+
+El servidor agrega CSP, proteccion contra insercion en marcos, politica de referencia y limites de permisos del navegador. Las sesiones usan cookies `HttpOnly` y `SameSite=Strict`; con la configuracion HTTPS tambien usan `Secure`, el prefijo `__Host-` y HSTS. El acceso se limita a cinco intentos por usuario e IP y a 30 intentos globales por IP, en ventanas de 15 minutos.
+
+Los tokens de sesion se guardan como hashes en SQLite. Al instalar esta mejora, las sesiones abiertas anteriormente se invalidan y cada usuario tendra que iniciar sesion una vez.
+
+La base SQLite y los respaldos no estan cifrados a nivel de archivo. Protege el equipo con cifrado completo del disco (por ejemplo, BitLocker en Windows), restringe el acceso a la carpeta `data/` y cifra cualquier respaldo que guardes fuera del equipo. No sincronices la base ni los respaldos en carpetas publicas.
+
 ## Datos
 
 Los administradores pueden descargar y restaurar respaldos desde Reportes.

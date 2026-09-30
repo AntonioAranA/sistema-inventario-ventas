@@ -89,6 +89,10 @@ tbody tr:last-child td { border-bottom: 0; }
 .cart-item small { margin-top: 4px; color: var(--muted); }
 .quantity { display: flex; align-items: center; gap: 8px; }
 .quantity button { width: 25px; height: 25px; border: 1px solid var(--line); border-radius: 6px; background: #fff; cursor: pointer; }
+.quantity input { width: 42px; height: 32px; padding: 3px; border: 1px solid var(--line); border-radius: 6px; text-align: center; font: inherit; font-size: 12px; }
+.quantity input::-webkit-inner-spin-button,
+.quantity input::-webkit-outer-spin-button { margin: 0; -webkit-appearance: none; }
+.quantity input { appearance: textfield; -moz-appearance: textfield; }
 .cart-footer { padding-top: 18px; border-top: 1px solid var(--line); }
 .cart-footer label, .form-grid label { color: var(--muted); font-size: 11px; font-weight: 700; }
 .cart-footer input, .form-grid input { display: block; width: 100%; margin-top: 7px; }

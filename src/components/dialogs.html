@@ -209,7 +209,7 @@
         </div>
         <div class="form-grid">
           <input type="hidden" id="user-id" />
-          <label class="span-2">Nombre completo<input id="user-name" required /></label><label>Nombre de usuario<input id="user-username" required minlength="3" /></label><label>Rol<select id="user-role"><option value="seller">Vendedor</option><option value="inventory">Inventario</option><option value="admin">Administrador</option></select></label><label class="span-2" id="user-password-field">Contraseña inicial<input id="user-password" required type="password" minlength="8" autocomplete="new-password" /><small>Debe tener al menos 8 caracteres.</small></label>
+          <label class="span-2">Nombre completo<input id="user-name" required /></label><label>Nombre de usuario<input id="user-username" required minlength="3" maxlength="128" /></label><label>Rol<select id="user-role"><option value="seller">Vendedor</option><option value="inventory">Inventario</option><option value="admin">Administrador</option></select></label><label class="span-2" id="user-password-field">Contraseña inicial<input id="user-password" required type="password" minlength="8" maxlength="128" autocomplete="new-password" /><small>Debe tener al menos 8 caracteres.</small></label>
         </div>
         <p class="muted" id="user-password-note" hidden></p>
         <div class="role-help">
@@ -246,7 +246,7 @@
           <h3>
             Cambiar contraseña
           </h3>
-          <label>Contraseña actual<input id="current-password" type="password" required autocomplete="current-password" /></label><label>Nueva contraseña<input id="new-password" type="password" required minlength="8" autocomplete="new-password" /></label><label>Repetir nueva contraseña<input id="confirm-password" type="password" required minlength="8" autocomplete="new-password" /></label>
+          <label>Contraseña actual<input id="current-password" type="password" required autocomplete="current-password" /></label><label>Nueva contraseña<input id="new-password" type="password" required minlength="8" maxlength="128" autocomplete="new-password" /></label><label>Repetir nueva contraseña<input id="confirm-password" type="password" required minlength="8" maxlength="128" autocomplete="new-password" /></label>
           <button class="primary wide" value="save">
             Actualizar contraseña
           </button>

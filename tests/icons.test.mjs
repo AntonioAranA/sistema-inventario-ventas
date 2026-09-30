@@ -44,7 +44,7 @@ test("los iconos siguen presentes al volver a dibujar tablas, carrito y reportes
   };
   t.after(() => delete globalThis.document);
   const state = {
-    products: [{ id: "1", name: "Café", sku: "CAF", category: "Alimentos", stock: 2, min: 3, price: 100 }],
+    products: [{ id: "1", name: "Caf\u00e9", sku: "CAF", category: "Alimentos", stock: 2, min: 3, price: 100 }],
     suppliers: [{ id: "2", name: "Proveedor" }],
     sales: [], purchases: [], movements: [],
   };
@@ -55,5 +55,7 @@ test("los iconos siguen presentes al volver a dibujar tablas, carrito y reportes
     }
     assert.match(elements.get("#products-table").innerHTML, /aria-label="Editar"/);
     assert.match(elements.get("#cart-items").innerHTML, /aria-label="Aumentar cantidad"/);
+    assert.match(elements.get("#cart-items").innerHTML, /type="number" min="1" max="2" step="1" value="1"/);
+    assert.match(elements.get("#cart-items").innerHTML, /aria-label="Cantidad de /);
   }
 });

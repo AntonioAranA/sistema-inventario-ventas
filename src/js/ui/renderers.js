@@ -181,7 +181,7 @@ function saleProductTemplate(product) {
   return `<button class="product-card" data-add="${escapeHtml(product.id)}" ${product.stock === 0 ? "disabled" : ""}><strong>${escapeHtml(product.name)}</strong><small>${escapeHtml(product.category)}</small><div class="product-card-footer"><b>${money.format(product.price)}</b><span>${product.stock ? `${product.stock} disponibles` : "Agotado"}</span></div></button>`;
 }
 function cartItemTemplate(item) {
-  return `<div class="cart-item"><div><strong>${escapeHtml(item.product.name)}</strong><small>${money.format(item.product.price * item.quantity)}</small></div><div class="quantity"><button data-dec="${escapeHtml(item.id)}" aria-label="Disminuir cantidad">${icon("minus")}</button><b>${item.quantity}</b><button data-inc="${escapeHtml(item.id)}" aria-label="Aumentar cantidad">${icon("plus")}</button></div></div>`;
+  return `<div class="cart-item"><div><strong>${escapeHtml(item.product.name)}</strong><small>${money.format(item.product.price * item.quantity)}</small></div><div class="quantity"><button data-dec="${escapeHtml(item.id)}" aria-label="Disminuir cantidad">${icon("minus")}</button><input type="number" min="1" max="${item.product.stock}" step="1" value="${item.quantity}" data-cart-quantity="${escapeHtml(item.id)}" aria-label="Cantidad de ${escapeHtml(item.product.name)}" inputmode="numeric"><button data-inc="${escapeHtml(item.id)}" aria-label="Aumentar cantidad">${icon("plus")}</button></div></div>`;
 }
 function historyRowTemplate(sale) {
   const names = sale.items.map((item) => escapeHtml(item.name)).join(", ");

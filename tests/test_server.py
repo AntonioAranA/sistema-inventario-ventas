@@ -47,14 +47,18 @@ class ApiTests(unittest.TestCase):
     def new_client():
         return urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
 
-    def call(self, path, data=None, method=None, client=None, raw=None):
+    def call(self, path, data=None, method=None, client=None, raw=None, origin=None):
         body = raw if raw is not None else json.dumps(data).encode() if data is not None else None
-        request = urllib.request.Request(self.base + path, body, {"Content-Type": "application/json"}, method=method)
+        headers = {"Content-Type": "application/json"}
+        if origin:
+            headers["Origin"] = origin
+        request = urllib.request.Request(self.base + path, body, headers, method=method)
         try:
             response = (client or self.client).open(request, timeout=10)
         except urllib.error.HTTPError as error:
             response = error
         with response:
+            self.response_headers = dict(response.headers)
             content = response.read()
             result = json.loads(content) if content and "application/json" in response.headers.get("Content-Type", "") else content
             return response.status, result
@@ -86,6 +90,84 @@ class ApiTests(unittest.TestCase):
             self.assertIn("error", result)
         for items in (None, "oops", [None], [1], {}):
             self.assertEqual(self.call("/api/sales", {"items": items})[0], 400)
+
+    def test_login_attempts_are_throttled_per_client(self):
+        for attempt in range(server.LOGIN_MAX_ATTEMPTS):
+            status, _ = self.call("/api/auth/login", {"username": "admin", "password": "wrong-password"})
+        self.assertEqual(status, 429)
+        self.assertIn("Retry-After", self.response_headers)
+        self.assertEqual(self.call("/api/auth/login", {
+            "username": "admin", "password": "test-password-123",
+        })[0], 429)
+
+    def test_login_attempts_are_also_limited_across_usernames(self):
+        old_limit = server.LOGIN_IP_MAX_ATTEMPTS
+        try:
+            server.LOGIN_IP_MAX_ATTEMPTS = 3
+            for attempt in range(server.LOGIN_IP_MAX_ATTEMPTS):
+                status, _ = self.call("/api/auth/login", {
+                    "username": f"missing-{attempt}", "password": "wrong-password",
+                })
+            self.assertEqual(status, 429)
+        finally:
+            server.LOGIN_IP_MAX_ATTEMPTS = old_limit
+
+    def test_security_headers_and_secure_cookie_configuration(self):
+        status, _ = self.call("/api/auth/status", client=self.new_client())
+        self.assertEqual(status, 200)
+        self.assertEqual(self.response_headers["X-Frame-Options"], "DENY")
+        self.assertIn("frame-ancestors 'none'", self.response_headers["Content-Security-Policy"])
+        old_secure = server.SECURE_COOKIES
+        try:
+            server.SECURE_COOKIES = True
+            self.assertEqual(self.call("/api/auth/login", {
+                "username": "admin", "password": "test-password-123",
+            }, client=self.new_client(), origin=self.base.replace("http://", "https://", 1))[0], 200)
+            cookie = self.response_headers["Set-Cookie"]
+            self.assertTrue(cookie.startswith("__Host-session="))
+            self.assertIn("; Secure", cookie)
+            self.assertIn("HttpOnly", cookie)
+            self.assertIn("SameSite=Strict", cookie)
+            self.assertIn("Strict-Transport-Security", self.response_headers)
+            token = cookie.split("=", 1)[1].split(";", 1)[0]
+            with server.connect() as db:
+                stored = db.execute("SELECT 1 FROM sessions WHERE token=?", (server.hash_session(token),)).fetchone()
+            self.assertIsNotNone(stored)
+        finally:
+            server.SECURE_COOKIES = old_secure
+
+    def test_upgrade_removes_legacy_plaintext_session_tokens(self):
+        user_id = self.admin["user"]["id"]
+        with server.connect() as db:
+            db.execute("INSERT INTO sessions VALUES(?,?,?)", ("legacy-bearer-token", user_id, server.now()))
+        server.initialize_database()
+        with server.connect() as db:
+            self.assertIsNone(db.execute(
+                "SELECT 1 FROM sessions WHERE token=?", ("legacy-bearer-token",),
+            ).fetchone())
+
+    def test_cross_origin_mutations_are_rejected(self):
+        request = urllib.request.Request(
+            self.base + "/api/products",
+            json.dumps({"name": "Injected", "sku": "BAD", "category": "Test", "price": 100, "min": 1}).encode(),
+            {"Content-Type": "application/json", "Origin": "https://attacker.example"},
+            method="POST",
+        )
+        try:
+            response = self.client.open(request, timeout=10)
+        except urllib.error.HTTPError as error:
+            response = error
+        with response:
+            self.assertEqual(response.status, 403)
+        self.assertFalse(any(product["sku"] == "BAD" for product in server.get_state()["products"]))
+        same_origin = urllib.request.Request(
+            self.base + "/api/auth/login",
+            json.dumps({"username": "admin", "password": "test-password-123"}).encode(),
+            {"Content-Type": "application/json", "Origin": self.base},
+            method="POST",
+        )
+        with self.new_client().open(same_origin, timeout=10) as response:
+            self.assertEqual(response.status, 200)
 
     def test_negative_fractional_and_boolean_quantities_do_not_change_stock(self):
         product = self.product()

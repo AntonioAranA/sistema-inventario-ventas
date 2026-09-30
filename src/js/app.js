@@ -379,6 +379,20 @@ function changeQuantity(productId, amount) {
   renderCart(getState().products, cart);
 }
 
+function setCartQuantity(productId, value) {
+  const item = cart.find(({ id }) => id === productId);
+  const product = getState().products.find(({ id }) => id === productId);
+  const quantity = Number(value);
+  if (!item || !product) return;
+  if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > product.stock) {
+    showToast(`Ingresa una cantidad entre 1 y ${product.stock}`);
+    renderCart(getState().products, cart);
+    return;
+  }
+  item.quantity = quantity;
+  renderCart(getState().products, cart);
+}
+
 async function completeSale() {
   if (!cart.length || salePending) return;
   salePending = true;
@@ -510,6 +524,10 @@ function bindEvents() {
     });
   }
   document.addEventListener("click", handleDocumentClick);
+  document.addEventListener("change", (event) => {
+    const quantityInput = event.target.closest("[data-cart-quantity]");
+    if (quantityInput) setCartQuantity(quantityInput.dataset.cartQuantity, quantityInput.value);
+  });
 }
 
 async function startApp() {
