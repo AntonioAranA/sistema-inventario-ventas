@@ -382,6 +382,59 @@ html.dark-mode {
   color: #f0aaa1;
 }
 
+/* Keep every accessibility control legible when the dark theme is active. */
+.dark-mode #accessibility-modal {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.dark-mode .settings-list,
+.dark-mode .setting-row {
+  border-color: var(--line);
+}
+
+.dark-mode .setting-row strong,
+.dark-mode .reader-heading strong {
+  color: var(--ink);
+}
+
+.dark-mode .setting-row small,
+.dark-mode .reader-heading small,
+.dark-mode .reader-field,
+.dark-mode .settings-intro,
+.dark-mode .reader-unavailable {
+  color: var(--muted);
+}
+
+.dark-mode .reader-settings {
+  border-color: var(--line);
+  background: #29372e;
+}
+
+.dark-mode .reader-status {
+  background: #35483a;
+  color: #b3dfbd;
+}
+
+.dark-mode .switch {
+  border: 1px solid #637066;
+  background: #414c44;
+}
+
+.dark-mode .switch:checked {
+  border-color: var(--green);
+  background: var(--green);
+}
+
+.dark-mode .switch::after {
+  background: #f4f1e9;
+}
+
+.dark-mode #reader-rate {
+  accent-color: var(--green);
+}
+
 /* Contraste alto */
 html.high-contrast {
   --line: currentColor;
@@ -409,15 +462,8 @@ html.high-contrast {
 
 /* Tamaño y movimiento */
 html.large-text {
-  font-size: 118%;
-}
-
-.large-text .sidebar {
-  width: 280px;
-}
-
-.large-text .app-shell {
-  grid-template-columns: 280px 1fr;
+  /* Amplía la interfaz completa, incluidos los textos definidos en px. */
+  zoom: 1.15;
 }
 
 .reduced-motion *,
@@ -467,13 +513,5 @@ html.large-text {
 
   .sidebar-note {
     margin-bottom: 0;
-  }
-
-  .large-text .sidebar {
-    width: auto;
-  }
-
-  .large-text .app-shell {
-    display: block;
   }
 }
