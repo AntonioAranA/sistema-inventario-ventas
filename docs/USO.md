@@ -33,6 +33,10 @@ El menú de cuenta permite cambiar la contraseña y cerrar sesión. Al cambiar l
 contraseña, las otras sesiones de esa cuenta se invalidan. La cuenta propia y el
 último administrador activo están protegidos contra desactivación.
 
+En escritorio, usa el control junto al menú para contraer o expandir la barra
+lateral. La selección se recuerda en ese navegador. En móvil la navegación se
+muestra en la franja inferior.
+
 ## Operación diaria
 
 1. En **Productos**, crea cada artículo con nombre, SKU, categoría, precio de
@@ -86,7 +90,7 @@ del proyecto:
 
 ```powershell
 python -m unittest discover -s tests -v
-node --test tests/frontend.test.mjs tests/icons.test.mjs tests/reports.test.mjs
+node --test tests/frontend.test.mjs tests/icons.test.mjs tests/reports.test.mjs tests/navigation.test.mjs
 ```
 
 Las pruebas de Python usan una base temporal. Las de JavaScript prueban utilidades

@@ -249,6 +249,9 @@ class Handler(BaseHTTPRequestHandler):
 
     @api_errors
     def do_DELETE(self):
+        if self.path.startswith("/api/users/"):
+            if not self.require_role("admin"): return
+            return self.delete_user(unquote(self.path.split("/api/users/", 1)[1]))
         if not self.require_role("admin","inventory"): return
         if self.path.startswith("/api/suppliers/"):
             supplier_id=unquote(self.path.split("/api/suppliers/",1)[1])
@@ -416,26 +419,63 @@ class Handler(BaseHTTPRequestHandler):
         try:
             data=self.body(); user_id=str(data.get("id", ""))
             if user_id:
-                role=str(data.get("role","")); active=1 if data.get("active",True) else 0
+                role=str(data.get("role",""))
                 if role not in ("admin","seller","inventory"): raise ValueError("Rol inválido")
                 current=self.current_user()
-                if current["id"]==user_id and not active: raise ValueError("No puedes desactivar tu propia cuenta")
                 with connect() as db:
                     db.execute("BEGIN IMMEDIATE")
-                    target=db.execute("SELECT role,active FROM users WHERE id=?",(user_id,)).fetchone()
+                    target=db.execute("SELECT * FROM users WHERE id=?",(user_id,)).fetchone()
                     if not target: raise ValueError("El usuario no existe")
-                    if not str(data.get("name", "")).strip(): raise ValueError("Ingresa un nombre")
-                    if target and target["role"]=="admin" and target["active"] and (role!="admin" or not active):
+                    name=str(data.get("name",target["name"])).strip()
+                    username=str(data.get("username",target["username"])).strip()
+                    active_value=data.get("active",target["active"])
+                    if type(active_value) is not bool and active_value not in (0,1):
+                        raise ValueError("Estado de usuario inválido")
+                    active=1 if active_value else 0
+                    password=str(data.get("password",""))
+                    if not name: raise ValueError("Ingresa un nombre")
+                    if len(username)<3: raise ValueError("El nombre de usuario debe tener al menos 3 caracteres")
+                    if password and len(password)<8: raise ValueError("La contraseña debe tener al menos 8 caracteres")
+                    if current["id"]==user_id and not active: raise ValueError("No puedes desactivar tu propia cuenta")
+                    if current["id"]==user_id and role!="admin": raise ValueError("No puedes cambiar tu propio rol de administrador")
+                    if current["id"]==user_id and password:
+                        raise ValueError("Para cambiar tu contraseña, usa la opción Mi cuenta")
+                    if target["role"]=="admin" and target["active"] and (role!="admin" or not active):
                         active_admins=db.execute("SELECT COUNT(*) FROM users WHERE role='admin' AND active=1").fetchone()[0]
                         if active_admins<=1: raise ValueError("Debe permanecer al menos un administrador activo")
-                    db.execute("UPDATE users SET name=?,role=?,active=? WHERE id=?",
-                      (str(data.get("name","")).strip(),role,active,user_id))
-                    if not active or target["role"] != role:
-                        db.execute("DELETE FROM sessions WHERE user_id=?", (user_id,))
-                return self.json({"updated":True})
+                    if password:
+                        salt=secrets.token_hex(16)
+                        digest=hash_password(password,salt)
+                        db.execute("UPDATE users SET name=?,username=?,role=?,active=?,salt=?,password_hash=? WHERE id=?",
+                          (name,username,role,active,salt,digest,user_id))
+                        db.execute("DELETE FROM sessions WHERE user_id=?",(user_id,))
+                    else:
+                        db.execute("UPDATE users SET name=?,username=?,role=?,active=? WHERE id=?",
+                          (name,username,role,active,user_id))
+                    if not active or target["role"] != role or username.casefold()!=target["username"].casefold():
+                        if current["id"]==user_id:
+                            db.execute("DELETE FROM sessions WHERE user_id=? AND token!=?",(user_id,self.session_token()))
+                        else:
+                            db.execute("DELETE FROM sessions WHERE user_id=?", (user_id,))
+                    updated=db.execute("SELECT id,name,username,role,active FROM users WHERE id=?",(user_id,)).fetchone()
+                return self.json(dict(updated))
             user=self.create_user(data,str(data.get("role",""))); self.json(user,201)
         except sqlite3.IntegrityError: self.json({"error":"Ese nombre de usuario ya existe"},409)
         except ValueError as error: self.json({"error":str(error)},400)
+
+    def delete_user(self,user_id):
+        with connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            target=db.execute("SELECT role,active FROM users WHERE id=?",(user_id,)).fetchone()
+            if not target: return self.json({"error":"El usuario no existe"},404)
+            if self.current_user()["id"]==user_id:
+                return self.json({"error":"No puedes eliminar tu propia cuenta"},400)
+            if target["role"]=="admin" and target["active"]:
+                active_admins=db.execute("SELECT COUNT(*) FROM users WHERE role='admin' AND active=1").fetchone()[0]
+                if active_admins<=1:
+                    return self.json({"error":"Debe permanecer al menos un administrador activo"},400)
+            db.execute("DELETE FROM users WHERE id=?",(user_id,))
+        return self.json({"deleted":True})
 
     def restore_backup(self):
         try:

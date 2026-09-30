@@ -185,6 +185,56 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(self.call("/api/users", {**admin, "role": "seller"})[0], 400)
         self.assertEqual(self.call("/api/auth/setup", {"name": "Otro", "username": "other", "password": "other-password"})[0], 409)
 
+    def test_admin_can_edit_and_delete_other_users(self):
+        _, user = self.call("/api/users", {
+            "name": "Vendedor", "username": "seller", "password": "seller-password", "role": "seller",
+        })
+        client = self.new_client()
+        self.call("/api/auth/login", {"username": "seller", "password": "seller-password"}, client=client)
+        status, updated = self.call("/api/users", {
+            "id": user["id"], "name": "Encargado", "username": "staff", "role": "inventory",
+            "active": True,
+        })
+        self.assertEqual(status, 200)
+        self.assertEqual((updated["name"], updated["username"], updated["role"]), ("Encargado", "staff", "inventory"))
+        self.assertEqual(self.call("/api/state", client=client)[0], 401)
+        self.assertEqual(self.call("/api/auth/login", {"username": "seller", "password": "seller-password"}, client=self.new_client())[0], 401)
+        fresh = self.new_client()
+        self.assertEqual(self.call("/api/auth/login", {"username": "staff", "password": "seller-password"}, client=fresh)[0], 200)
+        self.assertEqual(self.call("/api/users", {
+            "id": user["id"], "name": "Encargado", "username": "staff", "role": "inventory",
+            "active": True, "password": "new-password-123",
+        })[0], 200)
+        self.assertEqual(self.call("/api/state", client=fresh)[0], 401)
+        reset = self.new_client()
+        self.assertEqual(self.call("/api/auth/login", {"username": "staff", "password": "new-password-123"}, client=reset)[0], 200)
+        self.assertEqual(self.call(f"/api/users/{user['id']}", method="DELETE")[0], 200)
+        self.assertNotIn(user["id"], [entry["id"] for entry in self.call("/api/users")[1]])
+        self.assertEqual(self.call("/api/auth/login", {"username": "staff", "password": "new-password-123"}, client=self.new_client())[0], 401)
+
+    def test_user_deletion_protects_self_last_admin_and_non_admins(self):
+        admin_id = self.admin["user"]["id"]
+        self.assertEqual(self.call(f"/api/users/{admin_id}", method="DELETE")[0], 400)
+        self.assertEqual(self.call("/api/users", {**self.admin["user"], "role": "seller"})[0], 400)
+        second_admin_session = self.new_client()
+        self.call("/api/auth/login", {"username": "admin", "password": "test-password-123"}, client=second_admin_session)
+        status, updated_admin = self.call("/api/users", {
+            **self.admin["user"], "name": "Administración", "username": "admin-new",
+        })
+        self.assertEqual(status, 200)
+        self.assertEqual(updated_admin["username"], "admin-new")
+        self.assertEqual(self.call("/api/users")[0], 200)
+        self.assertEqual(self.call("/api/users", client=second_admin_session)[0], 401)
+        self.assertEqual(self.call("/api/users", {
+            **updated_admin, "password": "admin-password-456",
+        })[0], 400)
+        _, user = self.call("/api/users", {
+            "name": "Vendedor", "username": "seller", "password": "seller-password", "role": "seller",
+        })
+        client = self.new_client()
+        self.call("/api/auth/login", {"username": "seller", "password": "seller-password"}, client=client)
+        self.assertEqual(self.call(f"/api/users/{user['id']}", method="DELETE", client=client)[0], 403)
+
     def test_restart_does_not_recreate_deleted_catalog(self):
         with server.connect() as db:
             db.execute("DELETE FROM products")

@@ -1,30 +1,33 @@
-<div class="app-shell">
+<div class="app-shell" id="app-shell">
       <aside class="sidebar">
         <a class="brand" href="#dashboard" aria-label="Ir al resumen"><span class="brand-mark">A</span><span><strong>Mi Almacén</strong><small>Control de tu negocio</small></span></a>
-        <nav aria-label="Navegación principal">
-          <button class="nav-item active" data-view="dashboard">
-            <span><span data-icon="house"></span></span>Inicio
+        <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Contraer menú" aria-expanded="true" aria-controls="primary-navigation" title="Contraer menú">
+          <span data-icon="panel-left-close"></span><span class="sidebar-toggle-label">Contraer menú</span>
+        </button>
+        <nav id="primary-navigation" aria-label="Navegación principal">
+          <button class="nav-item active" data-view="dashboard" aria-label="Inicio" title="Inicio">
+            <span><span data-icon="house"></span></span><span class="nav-label">Inicio</span>
           </button>
-          <button class="nav-item" data-view="inventory">
-            <span><span data-icon="package"></span></span>Productos
+          <button class="nav-item" data-view="inventory" aria-label="Productos" title="Productos">
+            <span><span data-icon="package"></span></span><span class="nav-label">Productos</span>
           </button>
-          <button class="nav-item" data-view="movements">
-            <span><span data-icon="arrow-down-up"></span></span>Movimientos
+          <button class="nav-item" data-view="movements" aria-label="Movimientos" title="Movimientos">
+            <span><span data-icon="arrow-down-up"></span></span><span class="nav-label">Movimientos</span>
           </button>
-          <button class="nav-item" data-view="purchases">
-            <span><span data-icon="truck"></span></span>Abastecer
+          <button class="nav-item" data-view="purchases" aria-label="Abastecer" title="Abastecer">
+            <span><span data-icon="truck"></span></span><span class="nav-label">Abastecer</span>
           </button>
-          <button class="nav-item" data-view="sales">
-            <span><span data-icon="shopping-cart"></span></span>Vender
+          <button class="nav-item" data-view="sales" aria-label="Vender" title="Vender">
+            <span><span data-icon="shopping-cart"></span></span><span class="nav-label">Vender</span>
           </button>
-          <button class="nav-item" data-view="history">
-            <span><span data-icon="receipt"></span></span>Historial
+          <button class="nav-item" data-view="history" aria-label="Historial" title="Historial">
+            <span><span data-icon="receipt"></span></span><span class="nav-label">Historial</span>
           </button>
-          <button class="nav-item" data-view="reports">
-            <span><span data-icon="chart-no-axes-combined"></span></span>Reportes
+          <button class="nav-item" data-view="reports" aria-label="Reportes" title="Reportes">
+            <span><span data-icon="chart-no-axes-combined"></span></span><span class="nav-label">Reportes</span>
           </button>
-          <button class="nav-item admin-only" data-view="users">
-            <span><span data-icon="users"></span></span>Usuarios
+          <button class="nav-item admin-only" data-view="users" aria-label="Usuarios" title="Usuarios">
+            <span><span data-icon="users"></span></span><span class="nav-label">Usuarios</span>
           </button>
         </nav>
         <button class="accessibility-button" id="open-accessibility" type="button">
@@ -33,12 +36,6 @@
         <button class="theme-toggle" id="theme-toggle" type="button" aria-pressed="false">
           <span class="theme-toggle-icon" aria-hidden="true"><span data-icon="moon"></span></span><span><strong>Modo oscuro</strong><small>Vista más cómoda de noche</small></span>
         </button>
-        <div class="sidebar-note">
-          <span class="status-dot"></span>
-          <div>
-            <strong>Datos guardados</strong><small>En este dispositivo</small>
-          </div>
-        </div>
       </aside>
       <main>
         <header class="topbar">

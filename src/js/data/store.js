@@ -52,6 +52,10 @@ export async function saveUser(payload) {
   return request("/api/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
 }
 
+export async function deleteUser(userId) {
+  return request(`/api/users/${encodeURIComponent(userId)}`, { method: "DELETE" });
+}
+
 export async function restoreBackup(payload) {
   return request("/api/backup/restore", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
 }

@@ -1,8 +1,9 @@
 import { csvRows, parseBackup } from "./utils/exports.js";
 import { inventoryCostLookup } from "./utils/reports.js";
 import { icon } from "./ui/icons.js";
+import { initializeSidebarNavigation } from "./ui/navigation.js";
 import { VALID_VIEWS, VIEW_TITLES } from "./config.js";
-import { deleteProduct, deleteSupplier, getBackup, getState, getUsers, initializeStore, registerMovement, registerPurchase, registerSale, restoreBackup, saveProduct, saveSupplier, saveUser } from "./data/store.js";
+import { deleteProduct, deleteSupplier, deleteUser, getBackup, getState, getUsers, initializeStore, registerMovement, registerPurchase, registerSale, restoreBackup, saveProduct, saveSupplier, saveUser } from "./data/store.js";
 import { escapeHtml, formatDate, money } from "./utils/formatters.js";
 import { changePassword, getCurrentUser, initializeAuth, logout } from "./auth.js";
 import { showToast } from "./ui/notifications.js";
@@ -286,12 +287,34 @@ async function loadUsers() {
   users = await getUsers();
   const activeAdmins = users.filter((user) => user.active && user.role === "admin").length;
   element("#users-table").innerHTML = users.map((user) => {
-    const protectedAccount = user.id === currentUser.id || (user.active && user.role === "admin" && activeAdmins === 1);
-    const action = protectedAccount
-      ? `<span class="protected-user">${user.id === currentUser.id ? "Tu cuenta" : "Administrador requerido"}</span>`
-      : `<button class="text-button toggle-user" data-user-id="${escapeHtml(user.id)}">${user.active ? "Desactivar" : "Activar"}</button>`;
+    const isSelf = user.id === currentUser.id;
+    const lastActiveAdmin = user.active && user.role === "admin" && activeAdmins === 1;
+    const action = `<button class="icon-button edit-user" data-user-id="${escapeHtml(user.id)}" title="Editar usuario" aria-label="Editar usuario ${escapeHtml(user.name)}">${icon("pencil")}</button>
+      <button class="text-button toggle-user" data-user-id="${escapeHtml(user.id)}" ${isSelf || lastActiveAdmin ? "disabled" : ""}>${user.active ? "Desactivar" : "Activar"}</button>
+      <button class="icon-button delete-user" data-user-id="${escapeHtml(user.id)}" title="Eliminar usuario" aria-label="Eliminar usuario ${escapeHtml(user.name)}" ${isSelf || lastActiveAdmin ? "disabled" : ""}>${icon("trash-2")}</button>`;
     return `<tr><td><strong>${escapeHtml(user.name)}</strong></td><td>${escapeHtml(user.username)}</td><td><span class="badge">${roleLabel(user.role)}</span></td><td><span class="${user.active ? "status-active" : "status-inactive"}">${user.active ? "Activo" : "Inactivo"}</span></td><td class="row-actions">${action}</td></tr>`;
   }).join("");
+}
+
+function openUserModal(user = null) {
+  const form = element("#user-form");
+  form.reset();
+  const editing = Boolean(user);
+  element("#user-id").value = user?.id || "";
+  element("#user-name").value = user?.name || "";
+  element("#user-username").value = user?.username || "";
+  element("#user-role").value = user?.role || "seller";
+  const isSelf = editing && user.id === currentUser.id;
+  element("#user-password").value = "";
+  element("#user-password").required = !editing;
+  element("#user-password-field").hidden = isSelf;
+  element("#user-password-note").hidden = !isSelf;
+  element("#user-password-field").firstChild.textContent = editing ? "Nueva contraseña (opcional)" : "Contraseña inicial";
+  element("#user-password-note").textContent = "Para cambiar tu contraseña, usa la opción Cambiar contraseña en Mi cuenta.";
+  element("#user-modal-title").textContent = editing ? "Editar usuario" : "Nuevo usuario";
+  element("#user-submit").textContent = editing ? "Guardar cambios" : "Crear usuario";
+  updateRoleDescription();
+  element("#user-modal").showModal();
 }
 
 function updateRoleDescription() {
@@ -321,8 +344,17 @@ async function submitPasswordChange() {
 
 async function submitUser() {
   try {
-    await saveUser({ name: element("#user-name").value.trim(), username: element("#user-username").value.trim(), password: element("#user-password").value, role: element("#user-role").value });
-    await loadUsers(); showToast("Usuario creado"); return true;
+    const id = element("#user-id").value;
+    const payload = { name: element("#user-name").value.trim(), username: element("#user-username").value.trim(), role: element("#user-role").value };
+    const password = element("#user-password").value;
+    if (!id || password) payload.password = password;
+    if (id) payload.id = id;
+    const updated = await saveUser(payload);
+    if (id === currentUser.id) {
+      currentUser = { ...currentUser, ...updated };
+      element("#current-user").textContent = `${currentUser.name} · ${roleLabel(currentUser.role)}`;
+    }
+    await loadUsers(); showToast(id ? "Usuario actualizado" : "Usuario creado"); return true;
   } catch (error) { showToast(error.message); return false; }
 }
 
@@ -381,6 +413,8 @@ async function handleDocumentClick(event) {
   const removeSupplier = event.target.closest(".delete-supplier");
   const removePurchaseItem = event.target.closest(".remove-purchase-item");
   const editSupplier = event.target.closest(".edit-supplier");
+  const editUser = event.target.closest(".edit-user");
+  const removeUser = event.target.closest(".delete-user");
   const viewPurchase = event.target.closest(".view-purchase");
   const toggleUser = event.target.closest(".toggle-user");
   if (go) navigate(go.dataset.go);
@@ -390,10 +424,16 @@ async function handleDocumentClick(event) {
   if (decrement) changeQuantity(decrement.dataset.dec, -1);
   if (removePurchaseItem) { purchaseItems.splice(Number(removePurchaseItem.dataset.index), 1); renderPurchaseDraft(); }
   if (editSupplier) openSupplierModal(editSupplier.dataset.supplierId);
+  if (editUser) openUserModal(users.find(({ id }) => id === editUser.dataset.userId));
   if (viewPurchase) openPurchaseDetail(viewPurchase.dataset.purchaseId);
   if (toggleUser) {
     const user = users.find(({ id }) => id === toggleUser.dataset.userId);
-    try { await saveUser({ id: user.id, name: user.name, role: user.role, active: !user.active }); await loadUsers(); showToast("Usuario actualizado"); }
+    try { await saveUser({ id: user.id, name: user.name, username: user.username, role: user.role, active: !user.active }); await loadUsers(); showToast("Usuario actualizado"); }
+    catch (error) { showToast(error.message); }
+  }
+  if (removeUser && confirm("¿Eliminar esta cuenta de usuario? La acción no se puede deshacer.")) {
+    const user = users.find(({ id }) => id === removeUser.dataset.userId);
+    try { await deleteUser(user.id); await loadUsers(); showToast("Usuario eliminado"); }
     catch (error) { showToast(error.message); }
   }
   if (removeSupplier && confirm("¿Eliminar este proveedor?")) {
@@ -427,7 +467,7 @@ function bindEvents() {
   element("#add-supplier").addEventListener("click", () => openSupplierModal());
   element("#add-purchase").addEventListener("click", openPurchaseModal);
   element("#add-purchase-item").addEventListener("click", addPurchaseItem);
-  element("#add-user").addEventListener("click", () => { element("#user-form").reset(); updateRoleDescription(); element("#user-modal").showModal(); });
+  element("#add-user").addEventListener("click", () => openUserModal());
   document.querySelectorAll("[data-close-user]").forEach((button) => button.addEventListener("click", () => element("#user-modal").close()));
   element("#user-role").addEventListener("change", updateRoleDescription);
   element("#current-user").addEventListener("click", () => openAccountModal(currentUser));
@@ -476,6 +516,7 @@ async function startApp() {
   try {
     await loadComponents();
     await loadViews();
+    initializeSidebarNavigation();
     element("#today").textContent = formatDate(new Date());
     initializeAccessibility();
     currentUser = await initializeAuth();

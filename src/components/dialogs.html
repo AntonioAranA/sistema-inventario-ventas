@@ -200,7 +200,7 @@
           <div>
             <span class="label">Equipo</span>
             <h2>
-              Nuevo usuario
+              <span id="user-modal-title">Nuevo usuario</span>
             </h2>
           </div>
           <button type="button" class="icon-button" data-close-user aria-label="Cerrar">
@@ -208,8 +208,10 @@
           </button>
         </div>
         <div class="form-grid">
-          <label class="span-2">Nombre completo<input id="user-name" required /></label><label>Nombre de usuario<input id="user-username" required minlength="3" /></label><label>Rol<select id="user-role"><option value="seller">Vendedor</option><option value="inventory">Inventario</option><option value="admin">Administrador</option></select></label><label class="span-2">Contraseña inicial<input id="user-password" required type="password" minlength="8" /></label>
+          <input type="hidden" id="user-id" />
+          <label class="span-2">Nombre completo<input id="user-name" required /></label><label>Nombre de usuario<input id="user-username" required minlength="3" /></label><label>Rol<select id="user-role"><option value="seller">Vendedor</option><option value="inventory">Inventario</option><option value="admin">Administrador</option></select></label><label class="span-2" id="user-password-field">Contraseña inicial<input id="user-password" required type="password" minlength="8" autocomplete="new-password" /><small>Debe tener al menos 8 caracteres.</small></label>
         </div>
+        <p class="muted" id="user-password-note" hidden></p>
         <div class="role-help">
           <strong>Permisos del rol</strong>
           <p id="role-description">
@@ -219,7 +221,7 @@
           <button type="button" class="secondary" data-close-user>
             Cancelar
           </button>
-          <button class="primary" value="save">
+          <button class="primary" id="user-submit" value="save">
             Crear usuario
           </button>
         </div>

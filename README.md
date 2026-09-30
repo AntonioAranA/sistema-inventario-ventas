@@ -29,7 +29,7 @@ automáticamente, sin modificar `data/inventory.db`.
 
 ```powershell
 python -m unittest discover -s tests -v
-node --test tests/frontend.test.mjs tests/icons.test.mjs tests/reports.test.mjs
+node --test tests/frontend.test.mjs tests/icons.test.mjs tests/reports.test.mjs tests/navigation.test.mjs
 ```
 
 Cubren permisos, sesiones, validaciones, transacciones de inventario, archivos privados,
@@ -96,7 +96,8 @@ src/
 ├── css/
 │   ├── base.css, layout.css, components.css
 │   ├── theme.css, accessibility.css, responsive.css
-│   └── icons.css
+│   ├── icons.css
+│   └── brand.css          Acabado visual del sistema
 └── js/
     ├── app.js, auth.js, config.js
     ├── data/             Acceso a la API y estado de interfaz
