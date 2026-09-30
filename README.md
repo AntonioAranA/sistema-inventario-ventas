@@ -12,6 +12,11 @@ python server.py
 
 Luego abre `http://127.0.0.1:8000`.
 
+Para instalación, uso de cada módulo, roles y recuperación de respaldos, consulta
+la [guía de usuario](docs/USO.md). La estructura del código, el modelo de datos,
+los permisos de API y las decisiones del cálculo de costos están descritos en la
+[documentación técnica](docs/ARQUITECTURA.md).
+
 En el primer acceso se configura el administrador. Los roles de vendedor e inventario
 tienen permisos distintos; el administrador puede gestionarlos desde Usuarios.
 El menú de la cuenta permite cerrar sesión y cambiar la contraseña, invalidando las
@@ -80,32 +85,23 @@ No se requiere conexión a un CDN. Para usar un icono en HTML, escribe
 `icon("package")` desde `src/js/ui/icons.js`.
 
 ```text
+server.py                 Servidor HTTP, API y SQLite
+backup_validation.py      Validación de respaldos JSON
+docs/
+├── USO.md                Instalación, operación y ayuda para usuarios
+└── ARQUITECTURA.md       Módulos, datos, API y decisiones técnicas
 src/
 ├── components/         Layout, diálogos, autenticación y avisos
-│   ├── layout.html
-│   ├── dialogs.html
-│   ├── auth.html
-│   └── toast.html
 ├── views/              Vistas HTML independientes
-│   ├── dashboard.html
-│   ├── inventory.html
-│   ├── movements.html
-│   ├── purchases.html
-│   ├── sales.html
-│   ├── history.html
-│   ├── reports.html
-│   └── users.html
 ├── css/
-│   ├── base.css          Variables y estilos globales
-│   ├── layout.css        Estructura y grillas
-│   ├── components.css    Componentes de la interfaz
-│   ├── theme.css         Identidad visual y ajustes de estilo
-│   ├── accessibility.css Modos visuales y panel de accesibilidad
-│   └── responsive.css    Adaptación a tablet y teléfono
+│   ├── base.css, layout.css, components.css
+│   ├── theme.css, accessibility.css, responsive.css
+│   └── icons.css
 └── js/
-    ├── app.js            Eventos y coordinación de la interfaz
-    ├── config.js         Configuración compartida
-    ├── data/             Datos iniciales y persistencia
-    ├── ui/               Renderizado y notificaciones
-    └── utils/            Funciones de formato reutilizables
+    ├── app.js, auth.js, config.js
+    ├── data/             Acceso a la API y estado de interfaz
+    ├── ui/               Vistas, renderizado, iconos y accesibilidad
+    ├── utils/            API, formato, exportaciones y reportes
+    └── vendor/           Iconos Lucide locales
+tests/                    Pruebas de API y JavaScript
 ```
